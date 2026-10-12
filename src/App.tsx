@@ -38,7 +38,7 @@ export default function App() {
   const rows = useMemo(() => (store.plan ? project(store.plan) : null), [store.plan]);
   const summary = useMemo(() => (store.plan && rows ? summarise(store.plan, rows) : null), [store.plan, rows]);
 
-  if (store.status === 'signed-out') return <SignIn />;
+  if (store.status === 'signed-out') return <SignIn error={store.error} />;
   if (store.status === 'error') return <main className="center"><p className="err">Couldn't load your plan: {store.error}</p></main>;
   if (store.status === 'loading' || !store.plan || !rows || !summary) return <main className="center"><p className="muted">Loading your plan…</p></main>;
 

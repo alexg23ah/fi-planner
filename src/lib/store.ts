@@ -67,13 +67,15 @@ export function usePlanStore(): PlanStore {
   // Auth session
   useEffect(() => {
     if (!supabase) return;
-    supabase.auth.getSession().then(({ data }) => {
+    supabase.auth.getSession().then(({ data, error: e }) => {
+      if (e) setError(e.message);
       setSession(data.session);
       if (!data.session) setStatus('signed-out');
     });
     const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => {
       setSession(s);
       if (!s) { setPlan(null); setPlanId(null); setStatus('signed-out'); }
+      else setStatus((st) => (st === 'signed-out' ? 'loading' : st));
     });
     return () => sub.subscription.unsubscribe();
   }, []);

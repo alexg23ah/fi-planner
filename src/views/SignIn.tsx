@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { supabase } from '../lib/supabase';
+import { initialAuthError, supabase } from '../lib/supabase';
 
-export function SignIn() {
+export function SignIn({ error }: { error?: string | null }) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
+  const returned = initialAuthError || error;
 
   const google = async () => {
     if (!supabase) return;
@@ -32,6 +33,7 @@ export function SignIn() {
           {busy ? 'Opening Google…' : 'Continue with Google'}
         </button>
         {err && <p className="err">Couldn't start Google sign-in: {err}</p>}
+        {!err && returned && <p className="err">Sign-in didn't complete: {returned}</p>}
       </div>
     </main>
   );
