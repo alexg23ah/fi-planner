@@ -1,4 +1,4 @@
-# Runway — FI planner and budget
+# Buckaroo — FI planner and budget
 
 Two apps behind one sign-in, switched from the menu next to the logo:
 - **FI planner** — when you could stop working.

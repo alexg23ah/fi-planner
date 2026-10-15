@@ -144,3 +144,28 @@ describe('category and notes columns', () => {
     expect(parseBankText(csv, { map: { ...r.map, category: null } }).txns[0].category).toBeUndefined();
   });
 });
+
+import { summariseYear, categoryBudgetToDate } from './summary';
+
+describe('year summary', () => {
+  const settings = defaultBudgetSettings();
+  const cat = (id: string) => settings.categories.find((c) => c.id === id)!;
+  const t = (date: string, amount: number, categoryId: string | null) =>
+    ({ id: date + amount, date, description: 'X', amount, account: '', categoryId, source: null, hash: date + amount, split: null, note: '' });
+  it('totals a calendar year and pro-rates budgets to date', () => {
+    const txns = [t('2026-01-05', -100, 'groceries'), t('2026-03-02', -50, 'groceries'), t('2026-03-15', 3000, 'salary'), t('2025-12-30', -999, 'groceries')];
+    const s = summariseYear(txns, settings, '2026', '2026-03');
+    expect(s.spent).toBe(150);
+    expect(s.income).toBe(3000);
+    expect(s.monthsElapsed).toBe(3);
+    expect(s.monthsWithData).toBe(2);
+    expect(s.byCategory.get('groceries')).toBe(150);
+    expect(summariseYear(txns, settings, '2025', '2026-03').monthsElapsed).toBe(12);
+  });
+  it('counts yearly budgets in full once the year starts', () => {
+    expect(categoryBudgetToDate({ monthly: 100 }, 3)).toBe(300);
+    expect(categoryBudgetToDate({ monthly: 100, period: 'year' }, 3)).toBe(1200);
+    expect(categoryBudgetToDate({ monthly: 100, period: 'year' }, 0)).toBe(0);
+    expect(cat('groceries')).toBeTruthy();
+  });
+});

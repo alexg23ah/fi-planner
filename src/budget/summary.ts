@@ -26,6 +26,12 @@ export interface MonthSummary {
 }
 
 export function summariseMonth(txns: Txn[], settings: BudgetSettings, month: string): MonthSummary {
+  return summarisePeriod(txns, settings, month, (d) => monthOf(d) === month);
+}
+
+/** Same totals as a month, over any set of dates (e.g. a calendar year). */
+export function summarisePeriod(txns: Txn[], settings: BudgetSettings, label: string, inPeriod: (date: string) => boolean): MonthSummary {
+  const month = label;
   const kind = new Map(settings.categories.map((c) => [c.id, c.kind]));
   const yearly = new Set(settings.categories.filter((c) => c.period === 'year').map((c) => c.id));
   let monthlySpent = 0;
@@ -33,7 +39,7 @@ export function summariseMonth(txns: Txn[], settings: BudgetSettings, month: str
   const merchants = new Map<string, { spent: number; count: number }>();
   let spent = 0, income = 0, uncategorised = 0, uncategorisedSpend = 0;
   for (const t of txns) {
-    if (monthOf(t.date) !== month) continue;
+    if (!inPeriod(t.date)) continue;
     const amount = myAmount(t); // your share when split
     const k = t.categoryId ? kind.get(t.categoryId) : undefined;
     if (!t.categoryId || !k) {
@@ -80,4 +86,36 @@ export function yearlyProgress(txns: Txn[], settings: BudgetSettings, month: str
     spent.set(t.categoryId, spent.get(t.categoryId)! - myAmount(t));
   }
   return cats.map((c) => ({ id: c.id, name: c.name, annual: c.monthly * 12, spent: spent.get(c.id) ?? 0 }));
+}
+
+export interface YearSummary extends MonthSummary {
+  year: string;
+  /** Months of the year counted against the budget: 12 for past years, months so far for this year. */
+  monthsElapsed: number;
+  /** Months that have any transactions. */
+  monthsWithData: number;
+  /** Budget for the months elapsed, all spending categories except mortgage (yearly ones in full). */
+  budgetToDate: number;
+  /** Spending in budgeted categories + uncategorised, excluding mortgage. */
+  budgetedSpent: number;
+}
+
+/** A calendar year. `today` is a yyyy-mm month used to pro-rate the current year. */
+export function summariseYear(txns: Txn[], settings: BudgetSettings, year: string, today = currentMonth()): YearSummary {
+  const s = summarisePeriod(txns, settings, year, (d) => d.slice(0, 4) === year);
+  const ty = today.slice(0, 4);
+  const monthsElapsed = year < ty ? 12 : year > ty ? 0 : Number(today.slice(5, 7));
+  const withData = new Set(txns.filter((t) => t.date.slice(0, 4) === year).map((t) => monthOf(t.date))).size;
+  const exp = settings.categories.filter((c) => c.kind === 'expense' && c.id !== 'mortgage');
+  const budgetToDate = exp.reduce((a, c) => a + categoryBudgetToDate(c, monthsElapsed), 0);
+  const budgetedSpent = s.spent - (s.byCategory.get('mortgage') ?? 0);
+  return { ...s, year, monthsElapsed, monthsWithData: withData, budgetToDate, budgetedSpent };
+}
+
+export const yearsWithData = (txns: Txn[]) => [...new Set(txns.map((t) => t.date.slice(0, 4)))].sort().reverse();
+
+/** A category's budget for the first `months` months of a year. Yearly budgets count in full once the year has started (they're lumpy). */
+export function categoryBudgetToDate(c: { monthly: number; period?: 'month' | 'year' }, months: number): number {
+  if (!months) return 0;
+  return c.period === 'year' ? (c.monthly || 0) * 12 : (c.monthly || 0) * months;
 }

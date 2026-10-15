@@ -10,7 +10,7 @@ import { Settings } from './views/Settings';
 import { SignIn } from './views/SignIn';
 import { AppSwitcher, type AppId } from './components/AppSwitcher';
 import { useBudgetStore } from './budget/store';
-import { Overview } from './budget/views/Overview';
+import { Overview, type OverviewView } from './budget/views/Overview';
 import { Transactions, type TxnFilter } from './budget/views/Transactions';
 import { Import } from './budget/views/Import';
 import { Setup } from './budget/views/Setup';
@@ -57,6 +57,7 @@ export default function App() {
   const budget = useBudgetStore(store.planId);
   const [route, setRoute] = useState<Route>(parseHash);
   const [month, setMonth] = useState<string | null>(null);
+  const [overviewView, setOverviewView] = useState<OverviewView>('month');
   const [filter, setFilter] = useState<TxnFilter>({ month: 'all', category: 'all', account: 'all', q: '' });
 
   useEffect(() => {
@@ -113,7 +114,7 @@ export default function App() {
         {app === 'budget' && budget.status !== 'ready' && budget.status !== 'error' && <div className="center"><p className="muted">Loading your budget…</p></div>}
         {app === 'budget' && budget.status === 'ready' && (
           <>
-            {tab === 'overview' && <Overview store={budget} month={budgetMonth} setMonth={setMonth} openTxns={openTxns} fiComfortable={tierSpend(plan).comf} />}
+            {tab === 'overview' && <Overview store={budget} month={budgetMonth} setMonth={setMonth} openTxns={openTxns} fiComfortable={tierSpend(plan).comf} view={overviewView} setView={setOverviewView} />}
             {tab === 'transactions' && <Transactions store={budget} filter={filter} setFilter={setFilter} />}
             {tab === 'import' && <Import store={budget} go={go} />}
             {tab === 'splits' && <Splits store={budget} />}

@@ -20,7 +20,7 @@ export function SignIn({ error }: { error?: string | null }) {
   return (
     <main className="signin">
       <div className="signin-card">
-        <p className="brand">Runway</p>
+        <p className="brand">Buckaroo</p>
         <h1>Plan the year you can stop working.</h1>
         <p className="lede">Your plan is private to your Google account, plus anyone you choose to share it with.</p>
         <button type="button" className="btn google" onClick={google} disabled={busy}>

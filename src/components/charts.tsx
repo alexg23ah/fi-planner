@@ -72,8 +72,9 @@ export function LineSet({ data, series, height = 280 }: { data: Record<string, n
 }
 
 /** Single-series monthly bars with an optional dashed reference line (e.g. budget). */
-export function MonthBars({ data, refValue, refLabel, height = 240 }: {
+export function MonthBars({ data, refValue, refLabel, height = 240, onPick }: {
   data: { label: string; value: number; month: string }[]; refValue?: number; refLabel?: string; height?: number;
+  onPick?: (month: string) => void;
 }) {
   const theme = useTheme();
   const c = CHROME[theme];
@@ -89,7 +90,8 @@ export function MonthBars({ data, refValue, refLabel, height = 240 }: {
               <div className="tip-row"><span className="swatch" style={{ background: SERIES[theme][0] }} /><span>Spent</span><strong>{money(Number(payload[0].value))}</strong></div>
               {refValue ? <div className="tip-row"><span className="swatch" style={{ background: c.target }} /><span>{refLabel}</span><strong>{money(refValue)}</strong></div> : null}
             </div>) : null} />
-          <Bar dataKey="value" name="Spent" fill={SERIES[theme][0]} radius={[4, 4, 0, 0]} isAnimationActive={false} />
+          <Bar dataKey="value" name="Spent" fill={SERIES[theme][0]} radius={[4, 4, 0, 0]} isAnimationActive={false}
+            cursor={onPick ? 'pointer' : undefined} onClick={onPick ? (d: { payload?: { month: string } }) => d.payload && onPick(d.payload.month) : undefined} />
           {refValue ? <ReferenceLine y={refValue} stroke={c.target} strokeDasharray="6 4" label={{ value: refLabel, position: 'insideTopLeft', fill: c.ink, fontSize: 12 }} /> : null}
         </BarChart>
       </ResponsiveContainer>
