@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
-  CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis,
+  Bar, BarChart, CartesianGrid, Legend, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis,
   type TooltipProps,
 } from 'recharts';
 import { compact, money } from '../lib/format';
@@ -66,6 +66,32 @@ export function LineSet({ data, series, height = 280 }: { data: Record<string, n
               activeDot={{ r: 4, strokeWidth: 2 }} isAnimationActive={false} />
           ))}
         </LineChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+/** Single-series monthly bars with an optional dashed reference line (e.g. budget). */
+export function MonthBars({ data, refValue, refLabel, height = 240 }: {
+  data: { label: string; value: number; month: string }[]; refValue?: number; refLabel?: string; height?: number;
+}) {
+  const theme = useTheme();
+  const c = CHROME[theme];
+  return (
+    <div className="chart" style={{ height }}>
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={data} margin={{ top: 16, right: 12, bottom: 0, left: 0 }} barCategoryGap="28%">
+          <CartesianGrid stroke={c.grid} vertical={false} />
+          <XAxis dataKey="label" tick={{ fill: c.axis, fontSize: 12 }} tickLine={false} axisLine={{ stroke: c.grid }} />
+          <YAxis tickFormatter={compact} tick={{ fill: c.axis, fontSize: 12 }} tickLine={false} axisLine={false} width={56} />
+          <Tooltip cursor={{ fill: c.grid, opacity: 0.4 }} content={({ active, payload }) => active && payload?.length ? (
+            <div className="chart-tip"><div className="tip-head">{payload[0].payload.label}</div>
+              <div className="tip-row"><span className="swatch" style={{ background: SERIES[theme][0] }} /><span>Spent</span><strong>{money(Number(payload[0].value))}</strong></div>
+              {refValue ? <div className="tip-row"><span className="swatch" style={{ background: c.target }} /><span>{refLabel}</span><strong>{money(refValue)}</strong></div> : null}
+            </div>) : null} />
+          <Bar dataKey="value" name="Spent" fill={SERIES[theme][0]} radius={[4, 4, 0, 0]} isAnimationActive={false} />
+          {refValue ? <ReferenceLine y={refValue} stroke={c.target} strokeDasharray="6 4" label={{ value: refLabel, position: 'insideTopLeft', fill: c.ink, fontSize: 12 }} /> : null}
+        </BarChart>
       </ResponsiveContainer>
     </div>
   );
