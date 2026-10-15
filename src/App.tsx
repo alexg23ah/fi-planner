@@ -14,6 +14,7 @@ import { Overview } from './budget/views/Overview';
 import { Transactions, type TxnFilter } from './budget/views/Transactions';
 import { Import } from './budget/views/Import';
 import { Setup } from './budget/views/Setup';
+import { Splits } from './budget/views/Splits';
 import { currentMonth, monthsWithData } from './budget/summary';
 
 const TABS: Record<AppId, { id: string; label: string }[]> = {
@@ -28,6 +29,7 @@ const TABS: Record<AppId, { id: string; label: string }[]> = {
   budget: [
     { id: 'overview', label: 'Overview' },
     { id: 'transactions', label: 'Transactions' },
+    { id: 'splits', label: 'Splits' },
     { id: 'import', label: 'Import' },
     { id: 'setup', label: 'Setup' },
   ],
@@ -99,7 +101,7 @@ export default function App() {
       )}
       {store.saveState === 'error' && <p className="banner err">Your last change didn't save: {store.error}. Check your connection; the next edit will retry.</p>}
       {app === 'budget' && budget.status === 'error' && (
-        <p className="banner err">Couldn't load the budget: {budget.error}. If this is a new setup, run supabase/migrations/002_budget.sql in Supabase.</p>
+        <p className="banner err">Couldn't load the budget: {budget.error}. If this is a new setup, run supabase/migrations/002_budget.sql and 003_splits.sql in Supabase.</p>
       )}
       <main>
         {app === 'fi' && tab === 'dashboard' && <Dashboard plan={plan} rows={rows} summary={summary} />}
@@ -114,6 +116,7 @@ export default function App() {
             {tab === 'overview' && <Overview store={budget} month={budgetMonth} setMonth={setMonth} openTxns={openTxns} fiComfortable={tierSpend(plan).comf} />}
             {tab === 'transactions' && <Transactions store={budget} filter={filter} setFilter={setFilter} />}
             {tab === 'import' && <Import store={budget} go={go} />}
+            {tab === 'splits' && <Splits store={budget} />}
             {tab === 'setup' && <Setup store={budget} />}
           </>
         )}

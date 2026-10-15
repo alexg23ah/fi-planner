@@ -11,3 +11,7 @@ export const compact = (v: number) => {
 };
 
 export const pct = (v: number, dp = 1) => `${(v * 100).toFixed(dp)}%`;
+
+const audCents = new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', minimumFractionDigits: 2, maximumFractionDigits: 2 });
+/** Dollars and cents, for amounts people pay each other back. */
+export const cents = (v: number) => (Math.abs(v) < 0.005 ? '–' : v < 0 ? `(${audCents.format(-v)})` : audCents.format(v));

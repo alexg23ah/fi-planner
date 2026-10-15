@@ -24,6 +24,11 @@ export interface BudgetSettings {
   accounts: string[];
 }
 
+export type SplitStatus = 'owed' | 'requested' | 'paid';
+export interface SplitPerson { name: string; status: SplitStatus; at?: string }
+/** Split equally between you and `people`. */
+export interface Split { people: SplitPerson[] }
+
 export interface Txn {
   id: string;
   date: string;             // yyyy-mm-dd
@@ -33,6 +38,7 @@ export interface Txn {
   categoryId: string | null;
   source: CatSource | null;
   hash: string;
+  split: Split | null;
 }
 
 export type NewTxn = Omit<Txn, 'id'>;

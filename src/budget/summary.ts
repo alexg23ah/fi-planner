@@ -1,5 +1,6 @@
 import type { BudgetSettings, Txn } from './types';
 import { merchantKey } from './merchant';
+import { myAmount } from './split';
 
 export const monthOf = (date: string) => date.slice(0, 7);
 export const monthLabel = (m: string, long = false) =>
@@ -29,22 +30,23 @@ export function summariseMonth(txns: Txn[], settings: BudgetSettings, month: str
   let spent = 0, income = 0, uncategorised = 0, uncategorisedSpend = 0;
   for (const t of txns) {
     if (monthOf(t.date) !== month) continue;
+    const amount = myAmount(t); // your share when split
     const k = t.categoryId ? kind.get(t.categoryId) : undefined;
     if (!t.categoryId || !k) {
       uncategorised++;
-      if (t.amount < 0) { spent += -t.amount; uncategorisedSpend += -t.amount; }
-      else income += t.amount;
+      if (amount < 0) { spent += -amount; uncategorisedSpend += -amount; }
+      else income += amount;
     } else if (k === 'expense') {
-      spent += -t.amount;
-      byCategory.set(t.categoryId, (byCategory.get(t.categoryId) ?? 0) - t.amount);
+      spent += -amount;
+      byCategory.set(t.categoryId, (byCategory.get(t.categoryId) ?? 0) - amount);
     } else if (k === 'income') {
-      income += t.amount;
-      byCategory.set(t.categoryId, (byCategory.get(t.categoryId) ?? 0) + t.amount);
+      income += amount;
+      byCategory.set(t.categoryId, (byCategory.get(t.categoryId) ?? 0) + amount);
     } else continue; // transfers don't count
-    if (t.amount < 0 && k !== 'income') {
+    if (amount < 0 && k !== 'income') {
       const key = merchantKey(t.description);
       const m = merchants.get(key) ?? { spent: 0, count: 0 };
-      m.spent += -t.amount; m.count++;
+      m.spent += -amount; m.count++;
       merchants.set(key, m);
     }
   }

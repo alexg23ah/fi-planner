@@ -36,7 +36,7 @@ npm test                     # model tests
 Without the env vars the app runs in local-only mode (plan stored in the browser).
 
 ## Budget app setup
-1. Supabase SQL Editor → run `supabase/migrations/002_budget.sql` (after `001_plans.sql`).
+1. Supabase SQL Editor → run `supabase/migrations/002_budget.sql`, then `003_splits.sql` (after `001_plans.sql`).
 2. AI categorising (optional): add **one** of these in Vercel → Environment Variables, then redeploy.
    - `GEMINI_API_KEY` — from aistudio.google.com → Get API key. Optional `GEMINI_MODEL` (default `gemini-3.5-flash-lite`).
    - or `AI_API_KEY` — any OpenAI-compatible key (Groq by default). Optional `AI_BASE_URL`, `AI_MODEL`.
@@ -46,6 +46,9 @@ Without the env vars the app runs in local-only mode (plan stored in the browser
 1. Merchants you've categorised before (Setup → Remembered merchants). Your choices beat AI's.
 2. Built-in keywords for common Australian merchants (`src/budget/defaults.ts`).
 3. AI, only for merchants not matched above, only when you click the button. One line per merchant is sent: the cleaned name (card numbers, dates, references stripped) and in/out. No amounts, dates or account names. AI answers are remembered, so each merchant is only sent once.
+
+### Splits
+Type names (comma separated) in **Split with** on a transaction. It's shared equally between you and those people, only your share counts in the budget, and **Splits** shows what each person owes, with owed / requested / paid per item and a copyable request message. Money in whose description contains a split name is categorised as *Paid back by others* (a transfer, so not income).
 
 Imports accept CommBank, NAB, Macquarie and Easy Street CSV exports, or rows pasted from internet banking. Re-importing overlapping data skips transactions already stored.
 

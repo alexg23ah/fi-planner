@@ -4,6 +4,7 @@ import type { CatSource, NewTxn } from '../types';
 import { parseBankText, withHashes, type ColumnMap } from '../parse';
 import { aiItemsFor, categoriseLocal, upsertRule } from '../categorise';
 import { merchantKey } from '../merchant';
+import { knownNames } from '../split';
 import { CategorySelect, SourceBadge, amountClass } from './shared';
 import { money } from '../../lib/format';
 import { uid } from '../../model/defaults';
@@ -27,6 +28,11 @@ export function Import({ store, go }: { store: BudgetStore; go: (tab: string) =>
   const map = parsed?.map;
 
   const existing = useMemo(() => new Set(store.txns.map((t) => t.hash)), [store.txns]);
+  // Money in that mentions someone you've split with is probably them paying you back.
+  const payerRe = useMemo(() => {
+    const names = knownNames(store.txns).filter((n) => n.length >= 3).map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+    return names.length && settings.categories.some((c) => c.id === 'reimbursement') ? new RegExp(`\\b(${names.join('|')})\\b`, 'i') : null;
+  }, [store.txns, settings.categories]);
   const rows: Row[] = useMemo(() => {
     if (!parsed) return [];
     return withHashes(parsed.txns, account).map((t) => {
@@ -36,11 +42,12 @@ export function Import({ store, go }: { store: BudgetStore; go: (tab: string) =>
       else {
         const d = categoriseLocal(t.description, t.amount, settings);
         categoryId = d.categoryId; source = d.source;
+        if (t.amount > 0 && payerRe?.test(t.description) && (!categoryId || source === 'auto')) { categoryId = 'reimbursement'; source = 'auto'; }
         if (!categoryId && aiCats.get(key)) { categoryId = aiCats.get(key)!; source = 'ai'; }
       }
-      return { ...t, account, categoryId, source, duplicate: existing.has(t.hash) };
+      return { ...t, account, categoryId, source, split: null, duplicate: existing.has(t.hash) };
     });
-  }, [parsed, account, settings, aiCats, manual, existing]);
+  }, [parsed, account, settings, aiCats, manual, existing, payerRe]);
 
   const fresh = rows.filter((r) => !r.duplicate);
   const unknown = aiItemsFor(fresh).filter((i) => !aiCats.has(i.key));

@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import type { BudgetSettings, CatSource } from '../types';
 import { SOURCE_LABEL } from '../types';
 
@@ -31,3 +32,18 @@ const SOURCE_HELP: Record<CatSource, string> = {
 };
 
 export const amountClass = (a: number) => (a < 0 ? 'amt out' : 'amt in');
+
+/** Comma-separated names. Saves on blur or Enter. */
+export function SplitInput({ value, onCommit, label, disabled }: { value: string; onCommit: (v: string) => void; label: string; disabled?: boolean }) {
+  const [text, setText] = useState(value);
+  const [focused, setFocused] = useState(false);
+  useEffect(() => { if (!focused) setText(value); }, [value, focused]);
+  return (
+    <input className="text split-input" aria-label={label} value={text} disabled={disabled}
+      placeholder={disabled ? '' : 'Split with…'}
+      onFocus={() => setFocused(true)}
+      onChange={(e) => setText(e.target.value)}
+      onBlur={() => { setFocused(false); if (text.trim() !== value) onCommit(text); }}
+      onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); if (e.key === 'Escape') { setText(value); (e.target as HTMLInputElement).blur(); } }} />
+  );
+}

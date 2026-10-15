@@ -1,27 +1,35 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { defaultBudgetSettings } from './defaults';
-import type { BudgetSettings, CatSource, NewTxn, Txn } from './types';
+import type { BudgetSettings, CatSource, NewTxn, Split, Txn } from './types';
 import type { AiItem } from './categorise';
 
 const LS_SETTINGS = 'fi-planner:budget-settings';
 const LS_TXNS = 'fi-planner:transactions';
 
-type Row = { id: string; date: string; description: string; amount: number | string; account: string; category_id: string | null; source: string | null; hash: string };
+type Row = { id: string; date: string; description: string; amount: number | string; account: string; category_id: string | null; source: string | null; hash: string; split?: Split | null };
 const fromRow = (r: Row): Txn => ({
   id: r.id, date: r.date, description: r.description, amount: Number(r.amount), account: r.account ?? '',
-  categoryId: r.category_id, source: (r.source as CatSource) ?? null, hash: r.hash,
+  categoryId: r.category_id, source: (r.source as CatSource) ?? null, hash: r.hash, split: r.split ?? null,
 });
 
+const COLS = 'id,date,description,amount,account,category_id,source,hash,split';
 const sortTxns = (t: Txn[]) => [...t].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
 
 function normaliseSettings(raw: unknown): BudgetSettings {
   const d = defaultBudgetSettings();
   if (!raw || typeof raw !== 'object') return d;
   const r = raw as Partial<BudgetSettings>;
+  let categories = Array.isArray(r.categories) && r.categories.length ? r.categories : d.categories;
+  // Categories added in later versions.
+  if (!categories.some((c) => c.id === 'reimbursement')) {
+    const add = d.categories.find((c) => c.id === 'reimbursement')!;
+    const at = categories.findIndex((c) => c.id === 'transfers');
+    categories = at >= 0 ? [...categories.slice(0, at + 1), add, ...categories.slice(at + 1)] : [...categories, add];
+  }
   return {
     version: 1,
-    categories: Array.isArray(r.categories) && r.categories.length ? r.categories : d.categories,
+    categories,
     rules: Array.isArray(r.rules) ? r.rules : [],
     aiEnabled: r.aiEnabled ?? true,
     accounts: Array.isArray(r.accounts) ? r.accounts : [],
@@ -38,6 +46,7 @@ export interface BudgetStore {
   addTxns: (t: NewTxn[]) => Promise<{ added: number; skipped: number }>;
   patchTxns: (changes: { id: string; categoryId: string | null; source: CatSource | null }[]) => Promise<void>;
   deleteTxns: (ids: string[]) => Promise<void>;
+  setSplits: (changes: { id: string; split: Split | null }[]) => Promise<void>;
   askAi: (items: AiItem[]) => Promise<Map<string, string | null>>;
 }
 
@@ -79,7 +88,7 @@ export function useBudgetStore(planId: string | null): BudgetStore {
       const all: Txn[] = [];
       for (let from = 0; ; from += 1000) {
         const { data, error: e } = await supabase!.from('transactions')
-          .select('id,date,description,amount,account,category_id,source,hash')
+          .select(COLS)
           .eq('plan_id', planId).order('date', { ascending: false }).order('id').range(from, from + 999);
         if (cancelled) return;
         if (e) { setError(e.message); setStatus('error'); return; }
@@ -128,11 +137,11 @@ export function useBudgetStore(planId: string | null): BudgetStore {
     for (let i = 0; i < fresh.length; i += 500) {
       const chunk = fresh.slice(i, i + 500).map((t) => ({
         plan_id: planId, date: t.date, description: t.description, amount: t.amount, account: t.account,
-        category_id: t.categoryId, source: t.source, hash: t.hash,
+        category_id: t.categoryId, source: t.source, hash: t.hash, split: t.split,
       }));
       const { data, error: e } = await supabase!.from('transactions')
         .upsert(chunk, { onConflict: 'plan_id,hash', ignoreDuplicates: true })
-        .select('id,date,description,amount,account,category_id,source,hash');
+        .select(COLS);
       if (e) { setError(e.message); throw new Error(e.message); }
       inserted.push(...(data as Row[]).map(fromRow));
     }
@@ -173,6 +182,19 @@ export function useBudgetStore(planId: string | null): BudgetStore {
     }
   }, [cloud]);
 
+  const setSplits = useCallback(async (changes: { id: string; split: Split | null }[]) => {
+    if (!changes.length) return;
+    const byId = new Map(changes.map((c) => [c.id, c.split]));
+    const next = txnsRef.current.map((t) => (byId.has(t.id) ? { ...t, split: byId.get(t.id) ?? null } : t));
+    setTxns(next);
+    if (!cloud) { persistLocalTxns(next); return; }
+    setSaveState('saving');
+    const results = await Promise.all(changes.map((c) => supabase!.from('transactions').update({ split: c.split }).eq('id', c.id)));
+    const failed = results.find((r) => r.error);
+    if (failed?.error) { setError(failed.error.message); setSaveState('error'); return; }
+    setSaveState('saved');
+  }, [cloud]);
+
   const askAi = useCallback(async (items: AiItem[]) => {
     const out = new Map<string, string | null>();
     if (!items.length) return out;
@@ -191,5 +213,5 @@ export function useBudgetStore(planId: string | null): BudgetStore {
     return out;
   }, [cloud]);
 
-  return { status, error, settings, txns, saveState, updateSettings, addTxns, patchTxns, deleteTxns, askAi };
+  return { status, error, settings, txns, saveState, updateSettings, addTxns, patchTxns, deleteTxns, setSplits, askAi };
 }

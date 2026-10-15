@@ -4,8 +4,9 @@ import type { Txn } from '../types';
 import { aiItemsFor, sameMerchant, upsertRule } from '../categorise';
 import { merchantKey } from '../merchant';
 import { monthLabel, monthOf, monthsWithData } from '../summary';
-import { CategorySelect, SourceBadge, amountClass } from './shared';
-import { money } from '../../lib/format';
+import { CategorySelect, SourceBadge, SplitInput, amountClass } from './shared';
+import { buildSplit, parseNames, shares, splitText } from '../split';
+import { cents, money } from '../../lib/format';
 import { uid } from '../../model/defaults';
 
 export interface TxnFilter { month: string; category: string; account: string; q: string }
@@ -68,7 +69,7 @@ export function Transactions({ store, filter, setFilter }: { store: BudgetStore;
     <div className="page wide">
       <header className="page-head">
         <h1>Transactions</h1>
-        <p>Change a category and every transaction from that merchant follows, now and in future imports.</p>
+        <p>Change a category and every transaction from that merchant follows, now and in future imports. To split a purchase, type names separated by commas; it's shared equally with you, and only your share counts in the budget.</p>
       </header>
 
       <div className="toolbar filters">
@@ -107,7 +108,7 @@ export function Transactions({ store, filter, setFilter }: { store: BudgetStore;
           <p className="muted list-meta">{list.length} transactions, net {money(total)}</p>
           <div className="table-scroll tall">
             <table className="data txn-table">
-              <thead><tr><th className="sticky">Date</th><th>Description</th><th>Account</th><th className="r">Amount</th><th>Category</th><th>How</th><th aria-label="Delete" /></tr></thead>
+              <thead><tr><th className="sticky">Date</th><th>Description</th><th>Account</th><th className="r">Amount</th><th>Category</th><th>How</th><th>Split with</th><th aria-label="Delete" /></tr></thead>
               <tbody>
                 {list.slice(0, limit).map((t) => (
                   <tr key={t.id}>
@@ -117,6 +118,11 @@ export function Transactions({ store, filter, setFilter }: { store: BudgetStore;
                     <td className={`r ${amountClass(t.amount)}`}>{money(t.amount)}</td>
                     <td><CategorySelect label={`Category for ${t.description}`} value={t.categoryId} settings={settings} onChange={(id) => change(t, id)} /></td>
                     <td><SourceBadge source={t.source} /></td>
+                    <td className="split-cell">
+                      <SplitInput label={`Split ${t.description} with`} value={splitText(t.split)} disabled={t.amount >= 0}
+                        onCommit={(v) => store.setSplits([{ id: t.id, split: buildSplit(t.split, parseNames(v)) }])} />
+                      {t.split && <small className="muted">{t.split.people.length + 1} ways, {cents(shares(t.amount, t.split).each)} each</small>}
+                    </td>
                     <td><button type="button" className="icon-btn" aria-label={`Delete ${t.description}`} onClick={() => {
                       if (window.confirm(`Delete this transaction?\n${t.date} ${t.description} ${money(t.amount)}`)) store.deleteTxns([t.id]);
                     }}>×</button></td>

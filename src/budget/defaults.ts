@@ -35,6 +35,7 @@ export function defaultBudgetSettings(): BudgetSettings {
       cat('salary', 'Salary', 'income', 0),
       cat('other-income', 'Other income', 'income', 0),
       cat('transfers', 'Transfers between accounts', 'transfer'),
+      cat('reimbursement', 'Paid back by others', 'transfer'),
       cat('card-repayment', 'Credit card repayment', 'transfer'),
       cat('investing', 'Savings & investing', 'transfer'),
     ],
