@@ -76,7 +76,7 @@ export function Import({ store, go }: { store: BudgetStore; go: (tab: string) =>
         if (acct && !next.accounts.includes(acct)) next = { ...next, accounts: [...next.accounts, acct] };
         return next;
       });
-      const { added, skipped } = await store.addTxns(fresh.map(({ duplicate: _d, ...t }) => t));
+      const { added, skipped } = await store.addTxns(fresh.map((r) => { const t: NewTxn & { duplicate?: boolean } = { ...r }; delete t.duplicate; return t; }));
       setMsg({ kind: 'ok', text: `Imported ${added} transactions${skipped ? `, skipped ${skipped} already imported` : ''}.` });
       setText(''); setAiCats(new Map()); setManual(new Map()); setMapOverride(null);
     } catch (e) {
