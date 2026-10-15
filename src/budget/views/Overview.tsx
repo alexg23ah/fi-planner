@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import type { BudgetStore } from '../store';
-import { currentMonth, monthLabel, monthsWithData, shiftMonth, summariseMonth } from '../summary';
+import { currentMonth, monthLabel, monthsWithData, shiftMonth, summariseMonth, yearlyProgress } from '../summary';
 import { MonthBars } from '../../components/charts';
 import { money, pct } from '../../lib/format';
 import type { TxnFilter } from './Transactions';
@@ -52,9 +52,10 @@ export function Overview({ store, month, setMonth, openTxns, fiComfortable }: Pr
     );
   }
 
-  const left = s.budget - s.spent;
+  const left = s.budget - s.monthlySpent;
+  const yearly = yearlyProgress(txns, settings, month);
   const cats = settings.categories
-    .filter((c) => c.kind === 'expense' && ((s.byCategory.get(c.id) ?? 0) !== 0 || c.monthly > 0))
+    .filter((c) => c.kind === 'expense' && c.period !== 'year' && ((s.byCategory.get(c.id) ?? 0) !== 0 || c.monthly > 0))
     .map((c) => ({ ...c, spent: s.byCategory.get(c.id) ?? 0 }))
     .sort((a, b) => b.spent - a.spent || b.monthly - a.monthly);
   const incomeCats = settings.categories.filter((c) => c.kind === 'income' && (s.byCategory.get(c.id) ?? 0) !== 0);
@@ -75,7 +76,7 @@ export function Overview({ store, month, setMonth, openTxns, fiComfortable }: Pr
 
       <section className="ledger" aria-label="Month summary">
         <div><span>Spent</span><strong>{money(s.spent)}</strong></div>
-        <div><span>Budget</span><strong>{money(s.budget)}</strong></div>
+        <div><span>Monthly budget</span><strong>{money(s.budget)}</strong><small>{yearly.length > 0 ? 'Excludes yearly budgets and mortgage' : 'Excludes mortgage'}</small></div>
         <div className={left < 0 ? 'over' : ''}><span>{left < 0 ? 'Over budget' : 'Left'}</span><strong>{money(Math.abs(left))}</strong></div>
         <div><span>Income</span><strong>{money(s.income)}</strong></div>
         <div><span>Saved</span><strong>{money(s.income - s.spent)}</strong>{s.income > 0 && <small>{pct((s.income - s.spent) / s.income, 0)} of income</small>}</div>
@@ -119,6 +120,30 @@ export function Overview({ store, month, setMonth, openTxns, fiComfortable }: Pr
         </section>
 
         <div className="stack">
+          {yearly.length > 0 && (
+            <section className="panel">
+              <h2>Yearly budgets, {month.slice(0, 4)}</h2>
+              <table className="data budget-table">
+                <thead><tr><th>Category</th><th className="r">Spent</th><th className="r">Budget</th><th className="bar-col"><span className="sr-only">Progress</span></th></tr></thead>
+                <tbody>
+                  {yearly.map((y) => {
+                    const over = y.annual > 0 && y.spent > y.annual + 0.5;
+                    return (
+                      <tr key={y.id} className="clickable" onClick={() => openTxns({ category: y.id })}>
+                        <th>{y.name}</th>
+                        <td className="r">{money(y.spent)}</td>
+                        <td className="r muted">{money(y.annual)}</td>
+                        <td className="bar-col">
+                          {y.annual > 0 && <span className={`meter${over ? ' over' : ''}`} style={{ ['--p' as string]: Math.min(1, Math.max(0, y.spent / y.annual)) }} />}
+                          <small className={over ? 'over-text' : 'muted'}>{over ? `${money(y.spent - y.annual)} over` : `${money(Math.max(0, y.annual - y.spent))} left`}</small>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </section>
+          )}
           <section className="panel">
             <h2>Where it went</h2>
             <table className="data">
@@ -144,8 +169,8 @@ export function Overview({ store, month, setMonth, openTxns, fiComfortable }: Pr
 
       <section className="panel">
         <h2>Spending over 12 months</h2>
-        <p className="panel-note">Excludes transfers. The dashed line is your monthly budget.</p>
-        <MonthBars data={trend} refValue={s.budget} refLabel="Budget" />
+        <p className="panel-note">Excludes transfers. The dashed line is your total budget per month, with yearly budgets spread evenly.</p>
+        <MonthBars data={trend} refValue={s.budgetAll} refLabel="Budget" />
       </section>
 
       {annual && fiComfortable > 0 && (

@@ -467,3 +467,10 @@ a.btn { text-decoration: none; color: inherit; }
 .new-cats { margin: -4px 0 14px; }
 .new-cats .panel-note { margin: 6px 0 0; }
 .import-note { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ---------- Budget paste ---------- */
+textarea.paste.short { min-height: 110px; }
+.paste-preview { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0; }
+.chip { font-size: 13px; padding: 3px 10px; border-radius: 999px; background: var(--page); border: 1px solid var(--line); }
+.paste-opts { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; }
+.paste-opts select { height: 32px; margin-left: 6px; }

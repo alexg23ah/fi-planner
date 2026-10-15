@@ -106,7 +106,7 @@ export default function App() {
       <main>
         {app === 'fi' && tab === 'dashboard' && <Dashboard plan={plan} rows={rows} summary={summary} />}
         {app === 'fi' && tab === 'inputs' && <PlanInputs plan={plan} update={store.update} />}
-        {app === 'fi' && tab === 'spending' && <Spending plan={plan} update={store.update} />}
+        {app === 'fi' && tab === 'spending' && <Spending plan={plan} update={store.update} budgetCats={budget.status === 'ready' ? budget.settings.categories : []} />}
         {app === 'fi' && tab === 'events' && <LifeEvents plan={plan} update={store.update} />}
         {app === 'fi' && tab === 'projection' && <Projection plan={plan} rows={rows} />}
         {app === 'fi' && tab === 'settings' && <Settings store={store} />}

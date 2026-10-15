@@ -7,6 +7,8 @@ export interface BudgetCategory {
   name: string;
   kind: CategoryKind;
   monthly: number; // budget per month (expense) or expected per month (income); ignored for transfers
+  /** 'year': budgeted as a yearly amount (monthly = yearly / 12) and tracked year to date, e.g. holidays. */
+  period?: 'month' | 'year';
 }
 
 export interface MerchantRule {

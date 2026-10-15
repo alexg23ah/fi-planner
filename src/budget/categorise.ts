@@ -2,6 +2,11 @@ import type { BudgetSettings, CatSource, MerchantRule, Txn } from './types';
 import { KEYWORD_RULES } from './defaults';
 import { cleanDescription, merchantKey } from './merchant';
 
+export const FALLBACK: Record<string, string> = {
+  coffee: 'dining', phone: 'utilities', insurance: 'utilities', car: 'transport', subscriptions: 'entertainment',
+  fitness: 'personal', health: 'personal', education: 'other', fees: 'other', alcohol: 'dining', home: 'shopping',
+};
+
 export interface Decision { categoryId: string | null; source: CatSource | null }
 
 /** Your remembered rules first (longest pattern wins), then built-in keywords. */
@@ -17,7 +22,11 @@ export function categoriseLocal(description: string, amount: number, settings: B
   const dir = amount < 0 ? 'out' : 'in';
   for (const k of KEYWORD_RULES) {
     if (k.dir && k.dir !== dir) continue;
-    if (valid.has(k.cat) && k.re.test(clean)) return { categoryId: k.cat, source: 'auto' };
+    if (!k.re.test(clean)) continue;
+    // If you've removed the built-in category, fall back to the nearest one you kept.
+    let id: string | undefined = k.cat;
+    while (id && !valid.has(id)) id = FALLBACK[id];
+    if (id) return { categoryId: id, source: 'auto' };
   }
   return { categoryId: null, source: null };
 }
