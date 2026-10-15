@@ -11,6 +11,11 @@ import { uid } from '../../model/defaults';
 
 type Row = NewTxn & { duplicate: boolean };
 
+const TEMPLATE = `Date,Description,Amount
+13/10/2026,WOOLWORTHS MARRICKVILLE,-45.20
+14/10/2026,SALARY ENERGIZER,5200.00
+15/10/2026,OPAL TRANSPORTFORNSW,-3.20`;
+
 export function Import({ store, go }: { store: BudgetStore; go: (tab: string) => void }) {
   const { settings } = store;
   const [account, setAccount] = useState(settings.accounts[0] ?? '');
@@ -99,6 +104,26 @@ export function Import({ store, go }: { store: BudgetStore; go: (tab: string) =>
         <h1>Import transactions</h1>
         <p>Paste rows copied from internet banking, or load a CSV export from CommBank, NAB, Macquarie or Easy Street. Already-imported transactions are skipped.</p>
       </header>
+
+      <details className="panel import-help" open={!store.txns.length}>
+        <summary><h2>What to paste</h2></summary>
+        <p className="panel-note">Column order doesn't matter, and a header row is optional. Each row needs three things:</p>
+        <ul className="help-list">
+          <li><strong>Date</strong>: 13/10/2026, 13 Oct 2026 or 2026-10-13</li>
+          <li><strong>Description</strong>: the bank's text, e.g. WOOLWORTHS MARRICKVILLE</li>
+          <li><strong>Amount</strong>: one column with money out negative (-45.20), or separate Debit and Credit columns</li>
+        </ul>
+        <p className="panel-note">Extra columns like balance or category are ignored. Easiest: export a CSV from your bank and load it as is. If you're typing your own, use this layout:</p>
+        <pre className="example">{TEMPLATE}</pre>
+        <div className="btn-row">
+          <button type="button" className="btn" onClick={() => { setText(TEMPLATE); setMapOverride(null); }}>Paste this example</button>
+          <a className="btn" href={`data:text/csv;charset=utf-8,${encodeURIComponent(TEMPLATE)}`} download="transactions-template.csv">Download template</a>
+        </div>
+        <p className="panel-note" style={{ marginTop: 12 }}>
+          Where to find exports: CommBank NetBank → Accounts → Export → CSV. NAB → Transactions → Export → CSV.
+          Macquarie → account → Export transactions → CSV. Easy Street → Statements and transactions → Export.
+        </p>
+      </details>
 
       <section className="panel">
         <div className="grid">
