@@ -3,9 +3,9 @@ from PIL import Image
 K = {'O': '#1a1426', 'G': '#f2b632', 'L': '#ffd95a', 'g': '#c27d1c', 'W': '#ffffff', 'w': '#dfe4ec',
      'B': '#29252f', '$': '#2f9a45', 'd': '#164a2a', '.': None}
 ART = [
-    'OOOOOOOOOOOOOOOO',
-    'OLLLLLLLLLLLLLLO',
-    'OLGGGGGGGGGGGGgO',
+    '...OOOOOOOOOO...',
+    '..OLLLLLLLLLLO..',
+    '.OLGGGGGGGGGGgO.',
     'OLGBBWW$$WWWWGgO',
     'OLGBW$$$$$$WWGgO',
     'OLGWW$$WWWWWWGgO',
@@ -16,9 +16,9 @@ ART = [
     'OLGWW$$$$$$WBGgO',
     'OLGWWWW$$WWBBGgO',
     'OLGGGGGGGGGGGGgO',
-    'OLgggggggggggggO',
-    'OggggggggggggggO',
-    'OOOOOOOOOOOOOOOO',
+    '.OggggggggggggO.',
+    '..OggggggggggO..',
+    '...OOOOOOOOOO...',
 ]
 assert all(len(r) == 16 for r in ART)
 im = Image.new('RGBA', (16, 16))
