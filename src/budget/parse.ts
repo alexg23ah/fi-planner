@@ -17,12 +17,16 @@ export interface ColumnMap {
   amount: number | null;   // single signed amount column
   debit: number | null;    // or separate debit / credit columns
   credit: number | null;
+  category?: number | null; // optional: your own category names
+  note?: number | null;     // optional: notes
 }
 
 export interface ParsedTxn {
   date: string;            // yyyy-mm-dd
   description: string;
   amount: number;          // negative = money out
+  category?: string;
+  note?: string;
 }
 
 export interface ParseResult {
@@ -122,8 +126,13 @@ export function detectColumns(t: ParsedTable): ColumnMap {
     const amount = debit >= 0 && credit >= 0 ? -1 : findHeader(h, /^amount/i, /amount/i, /^value$/i);
     let description = findHeader(h, /^original description/i, /^transaction details/i, /^narrative/i, /^description/i, /^details/i, /description|details|narration|particulars|payee|merchant name/i);
     if (description < 0) description = bestTextColumn(sample, width, [date, amount, debit, credit]);
+    const category = findHeader(h, /^(my )?category$/i, /^budget category$/i);
+    const note = findHeader(h, /^notes?$/i, /^memo$/i, /^comments?$/i, /^my notes?$/i);
     if (date >= 0 && description >= 0 && (amount >= 0 || (debit >= 0 && credit >= 0))) {
-      return { date, description, amount: amount >= 0 ? amount : null, debit: amount >= 0 ? null : debit, credit: amount >= 0 ? null : credit };
+      return {
+        date, description, amount: amount >= 0 ? amount : null, debit: amount >= 0 ? null : debit, credit: amount >= 0 ? null : credit,
+        category: category >= 0 ? category : null, note: note >= 0 ? note : null,
+      };
     }
   }
 
@@ -146,7 +155,7 @@ export function detectColumns(t: ParsedTable): ColumnMap {
     amount = withNeg[0] ?? dense[0] ?? sparse[0] ?? null;
   }
   const description = bestTextColumn(sample, width, [date, ...numeric]);
-  return { date, description, amount, debit, credit };
+  return { date, description, amount, debit, credit, category: null, note: null };
 }
 
 function bestTextColumn(sample: string[][], width: number, exclude: number[]): number {
@@ -180,7 +189,12 @@ export function applyMap(t: ParsedTable, map: ColumnMap, flipSign = false): { tx
       else if (d === 0 || c === 0) amount = 0;
     }
     if (!date || !description || amount === null) { skipped++; continue; }
-    txns.push({ date, description, amount: flipSign ? -amount : amount });
+    const t: ParsedTxn = { date, description, amount: flipSign ? -amount : amount };
+    const cat = map.category != null ? (r[map.category] ?? '').trim() : '';
+    const note = map.note != null ? (r[map.note] ?? '').trim() : '';
+    if (cat) t.category = cat;
+    if (note) t.note = note;
+    txns.push(t);
   }
   return { txns, skipped };
 }

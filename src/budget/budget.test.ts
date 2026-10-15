@@ -42,7 +42,7 @@ describe('bank formats', () => {
 13 Oct 26,-12.50,123456789,,EFTPOS DEBIT,SQ *BLACKSTAR COFFEE NEWTOWN,1500.00,Food,Blackstar Coffee,14 Oct 26
 14 Oct 26,250.00,123456789,,TRANSFER CREDIT,TRANSFER FROM A SMITH,1750.00,Transfers,,14 Oct 26`;
     const r = parseBankText(csv);
-    expect(r.txns).toEqual([
+    expect(r.txns).toMatchObject([
       { date: '2026-10-13', amount: -12.5, description: 'SQ *BLACKSTAR COFFEE NEWTOWN' },
       { date: '2026-10-14', amount: 250, description: 'TRANSFER FROM A SMITH' },
     ]);
@@ -122,5 +122,25 @@ describe('categorising', () => {
       { description: 'COLES', amount: -5, categoryId: 'groceries' },
     ]);
     expect(items).toEqual([{ key: 'MYSTERY PTY', text: 'MYSTERY PTY LTD', direction: 'out' }]);
+  });
+});
+
+describe('category and notes columns', () => {
+  it('reads optional Category and Notes columns by header', () => {
+    const csv = `Date,Description,Amount,Category,Notes
+13/10/2026,WOOLWORTHS MARRICKVILLE,-45.20,Groceries,
+15/10/2026,THE GREEK CLUB,-102.88,Eating out,Oli birthday dinner`;
+    const r = parseBankText(csv);
+    expect(r.map.category).toBe(3);
+    expect(r.map.note).toBe(4);
+    expect(r.txns[0]).toEqual({ date: '2026-10-13', description: 'WOOLWORTHS MARRICKVILLE', amount: -45.2, category: 'Groceries' });
+    expect(r.txns[1]).toMatchObject({ category: 'Eating out', note: 'Oli birthday dinner' });
+  });
+  it('NAB bank category column is detected but can be switched off', () => {
+    const csv = `Date,Amount,Account Number,,Transaction Type,Transaction Details,Balance,Category,Merchant Name,Processed On
+13 Oct 26,-12.50,123456789,,EFTPOS DEBIT,SQ *BLACKSTAR COFFEE NEWTOWN,1500.00,Food,Blackstar Coffee,14 Oct 26`;
+    const r = parseBankText(csv);
+    expect(r.txns[0].category).toBe('Food');
+    expect(parseBankText(csv, { map: { ...r.map, category: null } }).txns[0].category).toBeUndefined();
   });
 });

@@ -56,7 +56,7 @@ Type names (comma separated) in **Split with** on a transaction. It's shared equ
 ### Notes
 Each transaction has a **Notes** field. Search matches notes as well as descriptions, notes show on the Splits tab, and a split request message uses the note instead of the bank description.
 
-Imports accept CommBank, NAB, Macquarie and Easy Street CSV exports, or rows pasted from internet banking. Re-importing overlapping data skips transactions already stored.
+Imports accept CommBank, NAB, Macquarie and Easy Street CSV exports, or rows pasted from internet banking. Optional **Category** and **Notes** columns are imported too: category names match your categories (case-insensitive), unmatched names can be created as new categories, and each merchant's most-used category is remembered for future imports. Re-importing overlapping data skips transactions already stored.
 
 ## How data is stored
 - One row per plan in `public.plans`; the whole plan is a JSON document in `data`.

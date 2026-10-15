@@ -464,3 +464,6 @@ textarea.paste:focus { outline: none; border-color: var(--accent); box-shadow: 0
 .help-list strong { color: var(--ink); }
 pre.example { margin: 0 0 12px; padding: 10px 12px; background: var(--page); border: 1px solid var(--line); border-radius: var(--radius-s); font: 13px/1.5 ui-monospace, 'SF Mono', Menlo, monospace; overflow-x: auto; }
 a.btn { text-decoration: none; color: inherit; }
+.new-cats { margin: -4px 0 14px; }
+.new-cats .panel-note { margin: 6px 0 0; }
+.import-note { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

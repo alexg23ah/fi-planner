@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import type { BudgetStore } from '../store';
-import type { CatSource, NewTxn } from '../types';
+import type { BudgetCategory, CatSource, NewTxn } from '../types';
 import { parseBankText, withHashes, type ColumnMap } from '../parse';
 import { aiItemsFor, categoriseLocal, upsertRule } from '../categorise';
 import { merchantKey } from '../merchant';
@@ -11,10 +11,27 @@ import { uid } from '../../model/defaults';
 
 type Row = NewTxn & { duplicate: boolean };
 
-const TEMPLATE = `Date,Description,Amount
-13/10/2026,WOOLWORTHS MARRICKVILLE,-45.20
-14/10/2026,SALARY ENERGIZER,5200.00
-15/10/2026,OPAL TRANSPORTFORNSW,-3.20`;
+const TEMPLATE = `Date,Description,Amount,Category,Notes
+13/10/2026,WOOLWORTHS MARRICKVILLE,-45.20,Groceries,
+14/10/2026,SALARY ENERGIZER,5200.00,Salary,
+15/10/2026,THE GREEK CLUB MARRICKVILLE,-102.88,Dining & takeaway,Oli birthday dinner`;
+
+const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'category';
+
+/** Planned categories for names in the file that don't match an existing one. */
+function planNewCategories(names: Map<string, number[]>, existing: BudgetCategory[]): BudgetCategory[] {
+  const ids = new Set(existing.map((c) => c.id));
+  const out: BudgetCategory[] = [];
+  for (const [name, amounts] of names) {
+    let id = `imp-${slug(name)}`;
+    for (let n = 2; ids.has(id); n++) id = `imp-${slug(name)}-${n}`;
+    ids.add(id);
+    const allIn = amounts.every((a) => a > 0);
+    const kind = allIn ? (/salary|wage|pay|bonus|income/i.test(name) ? 'income' : 'transfer') : 'expense';
+    out.push({ id, name, kind, monthly: 0 });
+  }
+  return out;
+}
 
 export function Import({ store, go }: { store: BudgetStore; go: (tab: string) => void }) {
   const { settings } = store;
@@ -27,6 +44,7 @@ export function Import({ store, go }: { store: BudgetStore; go: (tab: string) =>
   const [busy, setBusy] = useState<'ai' | 'import' | null>(null);
   const [msg, setMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
   const [showAll, setShowAll] = useState(false);
+  const [createMissing, setCreateMissing] = useState(true);
   const file = useRef<HTMLInputElement>(null);
 
   const parsed = useMemo(() => (text.trim() ? parseBankText(text, { map: mapOverride ?? undefined, flipSign: flip }) : null), [text, mapOverride, flip]);
@@ -38,21 +56,41 @@ export function Import({ store, go }: { store: BudgetStore; go: (tab: string) =>
     const names = knownNames(store.txns).filter((n) => n.length >= 3).map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
     return names.length && settings.categories.some((c) => c.id === 'reimbursement') ? new RegExp(`\\b(${names.join('|')})\\b`, 'i') : null;
   }, [store.txns, settings.categories]);
+  // Category names from the file: match existing categories by name (or id), plan the rest.
+  const { lookup, newCats } = useMemo(() => {
+    const lookup = new Map<string, string>();
+    for (const c of settings.categories) { lookup.set(c.name.trim().toLowerCase(), c.id); lookup.set(c.id.toLowerCase(), c.id); }
+    const unmatched = new Map<string, number[]>();
+    for (const t of parsed?.txns ?? []) {
+      const k = t.category?.trim().toLowerCase();
+      if (!k || lookup.has(k)) continue;
+      const name = t.category!.trim();
+      const key = [...unmatched.keys()].find((n) => n.toLowerCase() === k) ?? name;
+      unmatched.set(key, [...(unmatched.get(key) ?? []), t.amount]);
+    }
+    const newCats = createMissing ? planNewCategories(unmatched, settings.categories) : [];
+    for (const c of newCats) lookup.set(c.name.toLowerCase(), c.id);
+    return { lookup, newCats };
+  }, [parsed, settings.categories, createMissing]);
+  const preview = useMemo(() => ({ ...settings, categories: [...settings.categories, ...newCats] }), [settings, newCats]);
+
   const rows: Row[] = useMemo(() => {
     if (!parsed) return [];
     return withHashes(parsed.txns, account).map((t) => {
       const key = merchantKey(t.description);
       let categoryId: string | null; let source: CatSource | null;
+      const fromFile = t.category ? lookup.get(t.category.trim().toLowerCase()) : undefined;
       if (manual.has(key)) { categoryId = manual.get(key) ?? null; source = categoryId ? 'you' : null; }
+      else if (fromFile) { categoryId = fromFile; source = 'you'; }
       else {
         const d = categoriseLocal(t.description, t.amount, settings);
         categoryId = d.categoryId; source = d.source;
         if (t.amount > 0 && payerRe?.test(t.description) && (!categoryId || source === 'auto')) { categoryId = 'reimbursement'; source = 'auto'; }
         if (!categoryId && aiCats.get(key)) { categoryId = aiCats.get(key)!; source = 'ai'; }
       }
-      return { ...t, account, categoryId, source, split: null, note: '', duplicate: existing.has(t.hash) };
+      return { date: t.date, description: t.description, amount: t.amount, hash: t.hash, account, categoryId, source, split: null, note: t.note ?? '', duplicate: existing.has(t.hash) };
     });
-  }, [parsed, account, settings, aiCats, manual, existing, payerRe]);
+  }, [parsed, account, settings, aiCats, manual, existing, payerRe, lookup]);
 
   const fresh = rows.filter((r) => !r.duplicate);
   const unknown = aiItemsFor(fresh.filter((r) => r.amount < 0)).filter((i) => !aiCats.has(i.key));
@@ -80,16 +118,34 @@ export function Import({ store, go }: { store: BudgetStore; go: (tab: string) =>
     setBusy('import'); setMsg(null);
     try {
       // Remember decisions so the next import doesn't need AI for these merchants.
+      // Categories from the file: create missing ones, and remember each merchant's most-used category.
+      const used = new Set(fresh.map((r) => r.categoryId));
+      const toCreate = newCats.filter((c) => used.has(c.id));
+      const fileVotes = new Map<string, Map<string, number>>();
+      for (const t of parsed?.txns ?? []) {
+        const id = t.category ? lookup.get(t.category.trim().toLowerCase()) : undefined;
+        if (!id) continue;
+        const k = merchantKey(t.description);
+        const v = fileVotes.get(k) ?? new Map<string, number>();
+        v.set(id, (v.get(id) ?? 0) + 1);
+        fileVotes.set(k, v);
+      }
       store.updateSettings((s) => {
-        let next = s;
+        let next = toCreate.length ? { ...s, categories: [...s.categories, ...toCreate.filter((c) => !s.categories.some((x) => x.id === c.id))] } : s;
+        for (const [key, votes] of fileVotes) {
+          if (manual.has(key)) continue;
+          const top = [...votes.entries()].sort((a, b) => b[1] - a[1])[0][0];
+          next = upsertRule(next, key, top, 'you', uid());
+        }
         for (const [key, cat] of manual) if (cat) next = upsertRule(next, key, cat, 'you', uid());
         for (const r of fresh) if (r.source === 'ai' && r.categoryId) next = upsertRule(next, merchantKey(r.description), r.categoryId, 'ai', uid());
         const acct = account.trim();
         if (acct && !next.accounts.includes(acct)) next = { ...next, accounts: [...next.accounts, acct] };
         return next;
       });
+      const created = toCreate.length;
       const { added, skipped } = await store.addTxns(fresh.map((r) => { const t: NewTxn & { duplicate?: boolean } = { ...r }; delete t.duplicate; return t; }));
-      setMsg({ kind: 'ok', text: `Imported ${added} transactions${skipped ? `, skipped ${skipped} already imported` : ''}.` });
+      setMsg({ kind: 'ok', text: `Imported ${added} transactions${skipped ? `, skipped ${skipped} already imported` : ''}${created ? `. Added ${created} new ${created === 1 ? 'category' : 'categories'}; set their budgets in Setup` : ''}.` });
       setText(''); setAiCats(new Map()); setManual(new Map()); setMapOverride(null);
     } catch (e) {
       setMsg({ kind: 'err', text: `Import failed: ${e instanceof Error ? e.message : String(e)}` });
@@ -113,7 +169,7 @@ export function Import({ store, go }: { store: BudgetStore; go: (tab: string) =>
           <li><strong>Description</strong>: the bank's text, e.g. WOOLWORTHS MARRICKVILLE</li>
           <li><strong>Amount</strong>: one column with money out negative (-45.20), or separate Debit and Credit columns</li>
         </ul>
-        <p className="panel-note">Extra columns like balance or category are ignored. Easiest: export a CSV from your bank and load it as is. If you're typing your own, use this layout:</p>
+        <p className="panel-note">Optional: a <strong>Category</strong> column (your own category names; any that don't exist yet are created) and a <strong>Notes</strong> column. Other columns like balance are ignored. Easiest: export a CSV from your bank and load it as is. If you're typing your own, use this layout:</p>
         <pre className="example">{TEMPLATE}</pre>
         <div className="btn-row">
           <button type="button" className="btn" onClick={() => { setText(TEMPLATE); setMapOverride(null); }}>Paste this example</button>
@@ -186,7 +242,23 @@ export function Import({ store, go }: { store: BudgetStore; go: (tab: string) =>
             {map.amount !== null && (
               <label className="check"><input type="checkbox" checked={flip} onChange={(e) => setFlip(e.target.checked)} /> Spending shows as positive numbers</label>
             )}
+            <label>Category (optional)<select value={map.category ?? ''} onChange={(e) => setMap({ category: e.target.value === '' ? null : +e.target.value })}>
+              <option value="">None</option>
+              {[...Array(cols).keys()].map((i) => <option key={i} value={i}>{colLabel(i)}</option>)}
+            </select></label>
+            <label>Notes (optional)<select value={map.note ?? ''} onChange={(e) => setMap({ note: e.target.value === '' ? null : +e.target.value })}>
+              <option value="">None</option>
+              {[...Array(cols).keys()].map((i) => <option key={i} value={i}>{colLabel(i)}</option>)}
+            </select></label>
           </div>
+          {map.category != null && (newCats.length > 0 || !createMissing) && (
+            <div className="new-cats">
+              <label className="check-inline"><input type="checkbox" checked={createMissing} onChange={(e) => setCreateMissing(e.target.checked)} /> Create categories that don't exist yet</label>
+              {createMissing
+                ? <p className="panel-note">New: {newCats.map((c) => `${c.name} (${c.kind === 'expense' ? 'spending' : c.kind === 'income' ? 'income' : 'not counted'})`).join(', ')}. You can rename, merge or set budgets for them in Setup afterwards.</p>
+                : <p className="panel-note">Rows with a category name that doesn't match one of yours are categorised automatically instead.</p>}
+            </div>
+          )}
 
           {rows.length > 0 && (
             <>
@@ -209,16 +281,17 @@ export function Import({ store, go }: { store: BudgetStore; go: (tab: string) =>
               {msg && <p className={msg.kind} role="status">{msg.text}</p>}
               <div className="table-scroll">
                 <table className="data txn-table">
-                  <thead><tr><th>Date</th><th>Description</th><th className="r">Amount</th><th>Category</th><th>How</th></tr></thead>
+                  <thead><tr><th>Date</th><th>Description</th><th className="r">Amount</th><th>Category</th><th>How</th><th>Notes</th></tr></thead>
                   <tbody>
                     {shown.map((r) => (
                       <tr key={r.hash} className={r.duplicate ? 'dup' : ''}>
                         <td>{r.date}</td>
                         <td className="desc" title={r.description}>{r.description}{r.duplicate && <span className="badge none"> Already imported</span>}</td>
                         <td className={`r ${amountClass(r.amount)}`}>{money(r.amount)}</td>
-                        <td><CategorySelect label={`Category for ${r.description}`} value={r.categoryId} settings={settings}
+                        <td><CategorySelect label={`Category for ${r.description}`} value={r.categoryId} settings={preview}
                           onChange={(id) => setManual((m) => new Map(m).set(merchantKey(r.description), id))} /></td>
                         <td><SourceBadge source={r.source} /></td>
+                        <td className="muted import-note">{r.note}</td>
                       </tr>
                     ))}
                   </tbody>
