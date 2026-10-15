@@ -50,7 +50,7 @@ export function Import({ store, go }: { store: BudgetStore; go: (tab: string) =>
   }, [parsed, account, settings, aiCats, manual, existing, payerRe]);
 
   const fresh = rows.filter((r) => !r.duplicate);
-  const unknown = aiItemsFor(fresh).filter((i) => !aiCats.has(i.key));
+  const unknown = aiItemsFor(fresh.filter((r) => r.amount < 0)).filter((i) => !aiCats.has(i.key));
   const cols = parsed ? Math.max(0, ...parsed.table.rows.slice(0, 20).map((r) => r.length)) : 0;
   const colLabel = (i: number) => {
     const h = parsed?.table.header?.[i];
@@ -168,7 +168,7 @@ export function Import({ store, go }: { store: BudgetStore; go: (tab: string) =>
               <div className="import-bar">
                 <span>
                   {fresh.length} new{rows.length - fresh.length ? `, ${rows.length - fresh.length} already imported` : ''}.{' '}
-                  {fresh.filter((r) => !r.categoryId).length} without a category.
+                  {fresh.filter((r) => !r.categoryId && r.amount < 0).length} purchases without a category.
                 </span>
                 <div className="btn-row">
                   {settings.aiEnabled && unknown.length > 0 && (

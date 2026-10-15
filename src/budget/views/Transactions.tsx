@@ -5,9 +5,18 @@ import { aiItemsFor, sameMerchant, upsertRule } from '../categorise';
 import { merchantKey } from '../merchant';
 import { monthLabel, monthOf, monthsWithData } from '../summary';
 import { CategorySelect, SourceBadge, SplitInput, amountClass } from './shared';
-import { buildSplit, parseNames, shares, splitText } from '../split';
+import { buildSplit, parseSplitInput, shares, splitText } from '../split';
 import { cents, money } from '../../lib/format';
 import { uid } from '../../model/defaults';
+
+function SplitHint({ amount, split }: { amount: number; split: NonNullable<Txn['split']> }) {
+  const sh = shares(amount, split);
+  return (
+    <small className="muted">
+      {sh.custom ? `Your share ${cents(sh.mine)}` : `${split.people.length + 1} ways, ${cents(sh.each)} each`}
+    </small>
+  );
+}
 
 export interface TxnFilter { month: string; category: string; account: string; q: string }
 
@@ -29,7 +38,7 @@ export function Transactions({ store, filter, setFilter }: { store: BudgetStore;
   }, [txns, filter]);
 
   const total = list.reduce((a, t) => a + t.amount, 0);
-  const uncategorised = txns.filter((t) => !t.categoryId);
+  const uncategorised = txns.filter((t) => !t.categoryId && t.amount < 0);
 
   const change = async (t: Txn, categoryId: string | null) => {
     const others = categoryId ? sameMerchant(txns, t.description).filter((o) => o.id !== t.id) : [];
@@ -69,7 +78,7 @@ export function Transactions({ store, filter, setFilter }: { store: BudgetStore;
     <div className="page wide">
       <header className="page-head">
         <h1>Transactions</h1>
-        <p>Change a category and every transaction from that merchant follows, now and in future imports. To split a purchase, type names separated by commas; it's shared equally with you, and only your share counts in the budget.</p>
+        <p>Change a category and every transaction from that merchant follows, now and in future imports. To split a purchase, type names separated by commas; it's shared equally with you. Add an amount after a name for a fixed share (e.g. “Emily, Oli $40”). Only your share counts in the budget.</p>
       </header>
 
       <div className="toolbar filters">
@@ -120,8 +129,12 @@ export function Transactions({ store, filter, setFilter }: { store: BudgetStore;
                     <td><SourceBadge source={t.source} /></td>
                     <td className="split-cell">
                       <SplitInput label={`Split ${t.description} with`} value={splitText(t.split)} disabled={t.amount >= 0}
-                        onCommit={(v) => store.setSplits([{ id: t.id, split: buildSplit(t.split, parseNames(v)) }])} />
-                      {t.split && <small className="muted">{t.split.people.length + 1} ways, {cents(shares(t.amount, t.split).each)} each</small>}
+                        validate={(v) => {
+                          const sp = buildSplit(t.split, parseSplitInput(v));
+                          return sp && shares(t.amount, sp).over ? `Fixed amounts add up to more than ${cents(-t.amount)}.` : null;
+                        }}
+                        onCommit={(v) => store.setSplits([{ id: t.id, split: buildSplit(t.split, parseSplitInput(v)) }])} />
+                      {t.split && <SplitHint amount={t.amount} split={t.split} />}
                     </td>
                     <td><button type="button" className="icon-btn" aria-label={`Delete ${t.description}`} onClick={() => {
                       if (window.confirm(`Delete this transaction?\n${t.date} ${t.description} ${money(t.amount)}`)) store.deleteTxns([t.id]);

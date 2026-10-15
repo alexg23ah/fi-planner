@@ -22,8 +22,9 @@ function normaliseSettings(raw: unknown): BudgetSettings {
   const r = raw as Partial<BudgetSettings>;
   let categories = Array.isArray(r.categories) && r.categories.length ? r.categories : d.categories;
   // Categories added in later versions.
-  if (!categories.some((c) => c.id === 'reimbursement')) {
-    const add = d.categories.find((c) => c.id === 'reimbursement')!;
+  for (const id of ['reimbursement', 'money-in']) {
+    if (categories.some((c) => c.id === id)) continue;
+    const add = d.categories.find((c) => c.id === id)!;
     const at = categories.findIndex((c) => c.id === 'transfers');
     categories = at >= 0 ? [...categories.slice(0, at + 1), add, ...categories.slice(at + 1)] : [...categories, add];
   }
@@ -98,6 +99,14 @@ export function useBudgetStore(planId: string | null): BudgetStore {
       st = normaliseSettings(st);
       latest.current = st;
       setSettings(st);
+      // Earlier versions filed interest and refunds under "Other income" by keyword; they're not income now.
+      const moved = all.filter((t) => t.categoryId === 'other-income' && t.source === 'auto' && t.amount > 0);
+      if (moved.length) {
+        for (const t of moved) t.categoryId = 'money-in';
+        for (let i = 0; i < moved.length; i += 200) {
+          await supabase!.from('transactions').update({ category_id: 'money-in' }).in('id', moved.slice(i, i + 200).map((t) => t.id));
+        }
+      }
       setTxns(all);
       setStatus('ready');
     })();

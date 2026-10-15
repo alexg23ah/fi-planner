@@ -1,35 +1,73 @@
 import type { Split, SplitPerson, SplitStatus, Txn } from './types';
 
-/** "emily, Oli ,  sam" → ["Emily", "Oli", "Sam"], de-duplicated case-insensitively. */
-export function parseNames(input: string): string[] {
+export interface SplitEntry { name: string; amount?: number }
+
+/**
+ * "emily, Oli $40, sam 12.50" → Emily (equal), Oli ($40), Sam ($12.50).
+ * A number after a name fixes that person's share; everyone else splits the rest equally with you.
+ */
+export function parseSplitInput(input: string): SplitEntry[] {
   const seen = new Set<string>();
-  const out: string[] = [];
+  const out: SplitEntry[] = [];
   for (const raw of input.split(/[,;\n]+/)) {
-    const n = raw.trim().replace(/\s+/g, ' ');
-    if (!n || /^(me|myself|i)$/i.test(n)) continue;
-    const name = n.charAt(0).toUpperCase() + n.slice(1);
-    const k = name.toLowerCase();
-    if (!seen.has(k)) { seen.add(k); out.push(name); }
+    const part = raw.trim().replace(/\s+/g, ' ');
+    if (!part) continue;
+    const m = part.match(/^(.*?)\s*[:=]?\s*\$?\s*(\d+(?:\.\d{1,2})?)\s*$/);
+    const rawName = (m && m[1] ? m[1] : part).trim();
+    if (!rawName || /^(me|myself|i)$/i.test(rawName)) continue;
+    const name = rawName.charAt(0).toUpperCase() + rawName.slice(1);
+    if (seen.has(name.toLowerCase())) continue;
+    seen.add(name.toLowerCase());
+    out.push(m && m[1] ? { name, amount: Number(m[2]) } : { name });
   }
   return out;
 }
 
-/** New split from typed names, keeping the status of anyone already on it. */
-export function buildSplit(prev: Split | null, names: string[]): Split | null {
-  if (!names.length) return null;
+/** Names only (kept for callers that don't need amounts). */
+export const parseNames = (input: string) => parseSplitInput(input).map((e) => e.name);
+
+/** New split from typed entries, keeping the status of anyone already on it. */
+export function buildSplit(prev: Split | null, entries: (SplitEntry | string)[]): Split | null {
+  if (!entries.length) return null;
   const old = new Map((prev?.people ?? []).map((p) => [p.name.toLowerCase(), p]));
-  return { people: names.map((name) => old.get(name.toLowerCase()) ?? { name, status: 'owed' }) };
+  return {
+    people: entries.map((e) => {
+      const { name, amount } = typeof e === 'string' ? { name: e, amount: undefined } : e;
+      const base: SplitPerson = old.get(name.toLowerCase()) ?? { name, status: 'owed' };
+      const next: SplitPerson = { name: base.name, status: base.status };
+      if (base.at) next.at = base.at;
+      if (amount !== undefined) next.amount = amount;
+      return next;
+    }),
+  };
 }
 
-export const splitText = (s: Split | null) => (s ? s.people.map((p) => p.name).join(', ') : '');
+const fmt = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(2));
+export const splitText = (s: Split | null) =>
+  s ? s.people.map((p) => (p.amount !== undefined ? `${p.name} $${fmt(p.amount)}` : p.name)).join(', ') : '';
 
-/** Equal split between you and everyone named. Others round to cents; you absorb the rounding. */
-export function shares(amount: number, split: Split | null): { each: number; mine: number } {
+const r2 = (n: number) => Math.round(n * 100) / 100;
+
+/**
+ * Each person's share and yours. Fixed amounts come off first; the rest is split equally
+ * between you and everyone without a fixed amount. You absorb rounding.
+ */
+export function shares(amount: number, split: Split | null): { each: number; mine: number; byName: Map<string, number>; custom: boolean; over: boolean } {
   const total = Math.abs(amount);
-  if (!split?.people.length) return { each: 0, mine: total };
-  const each = Math.round((total / (split.people.length + 1)) * 100) / 100;
-  return { each, mine: Math.round((total - each * split.people.length) * 100) / 100 };
+  const byName = new Map<string, number>();
+  if (!split?.people.length) return { each: 0, mine: total, byName, custom: false, over: false };
+  const fixed = split.people.filter((p) => p.amount !== undefined);
+  const equal = split.people.filter((p) => p.amount === undefined);
+  const fixedSum = r2(fixed.reduce((a, p) => a + (p.amount ?? 0), 0));
+  const rest = Math.max(0, total - fixedSum);
+  const each = r2(rest / (equal.length + 1));
+  for (const p of fixed) byName.set(p.name.toLowerCase(), r2(p.amount ?? 0));
+  for (const p of equal) byName.set(p.name.toLowerCase(), each);
+  const others = [...byName.values()].reduce((a, v) => a + v, 0);
+  return { each, mine: r2(total - others), byName, custom: fixed.length > 0, over: fixedSum > total + 0.005 };
 }
+
+export const shareOf = (amount: number, split: Split, name: string) => shares(amount, split).byName.get(name.toLowerCase()) ?? 0;
 
 /** The transaction amount that's yours (signed). Splits only apply to money out. */
 export function myAmount(t: Pick<Txn, 'amount' | 'split'>): number {
@@ -51,8 +89,9 @@ export function owedByPerson(txns: Txn[]): PersonSummary[] {
   const map = new Map<string, PersonSummary>();
   for (const t of txns) {
     if (t.amount >= 0 || !t.split?.people.length) continue;
-    const { each } = shares(t.amount, t.split);
+    const { byName } = shares(t.amount, t.split);
     for (const p of t.split.people) {
+      const each = byName.get(p.name.toLowerCase()) ?? 0;
       const k = p.name.toLowerCase();
       const s = map.get(k) ?? { name: p.name, owed: 0, requested: 0, paid: 0, lines: [] };
       s[p.status] = Math.round((s[p.status] + each) * 100) / 100;

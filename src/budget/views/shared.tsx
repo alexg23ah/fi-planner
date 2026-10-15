@@ -33,17 +33,32 @@ const SOURCE_HELP: Record<CatSource, string> = {
 
 export const amountClass = (a: number) => (a < 0 ? 'amt out' : 'amt in');
 
-/** Comma-separated names. Saves on blur or Enter. */
-export function SplitInput({ value, onCommit, label, disabled }: { value: string; onCommit: (v: string) => void; label: string; disabled?: boolean }) {
+/** Comma-separated names, optionally with a $ amount each. Saves on blur or Enter; `validate` can block the save. */
+export function SplitInput({ value, onCommit, validate, label, disabled }: {
+  value: string; onCommit: (v: string) => void; validate?: (v: string) => string | null; label: string; disabled?: boolean;
+}) {
   const [text, setText] = useState(value);
   const [focused, setFocused] = useState(false);
-  useEffect(() => { if (!focused) setText(value); }, [value, focused]);
+  const [err, setErr] = useState<string | null>(null);
+  useEffect(() => { if (!focused && !err) setText(value); }, [value, focused, err]);
+  const commit = () => {
+    if (text.trim() === value) { setErr(null); return; }
+    const e = validate?.(text) ?? null;
+    setErr(e);
+    if (!e) onCommit(text);
+  };
   return (
-    <input className="text split-input" aria-label={label} value={text} disabled={disabled}
-      placeholder={disabled ? '' : 'Split with…'}
-      onFocus={() => setFocused(true)}
-      onChange={(e) => setText(e.target.value)}
-      onBlur={() => { setFocused(false); if (text.trim() !== value) onCommit(text); }}
-      onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); if (e.key === 'Escape') { setText(value); (e.target as HTMLInputElement).blur(); } }} />
+    <>
+      <input className={`text split-input${err ? ' invalid' : ''}`} aria-label={label} aria-invalid={!!err} value={text} disabled={disabled}
+        placeholder={disabled ? '' : 'Split with…'} title="Names separated by commas. Add an amount for a fixed share, e.g. Emily, Oli $40"
+        onFocus={() => setFocused(true)}
+        onChange={(e) => { setText(e.target.value); if (err) setErr(null); }}
+        onBlur={() => { setFocused(false); commit(); }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+          if (e.key === 'Escape') { setText(value); setErr(null); (e.target as HTMLInputElement).blur(); }
+        }} />
+      {err && <small className="err split-err">{err}</small>}
+    </>
   );
 }

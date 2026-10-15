@@ -29,7 +29,7 @@ export function Setup({ store }: { store: BudgetStore }) {
           <h2>Categories and monthly budgets</h2>
           <span className="muted">Total spending budget {money(totalBudget)} a month, {money(totalBudget * 12)} a year</span>
         </div>
-        <p className="panel-note">Transfers (between your accounts, card repayments, investing) are left out of spending and income.</p>
+        <p className="panel-note">Income counts only categories set to Income: your salary plus any you add (bonus, side work). Everything else that comes in, like refunds, interest or transfers, is left out. Transfer categories are left out of spending too.</p>
         <div className="table-scroll">
           <table className="edit-table">
             <thead><tr><th>Category</th><th>Type</th><th className="r">Per month</th><th className="r">Used</th><th aria-label="Delete" /></tr></thead>

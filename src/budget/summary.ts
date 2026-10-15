@@ -18,7 +18,7 @@ export interface MonthSummary {
   income: number;
   budget: number;
   byCategory: Map<string, number>; // spend (positive) per expense category; income per income category
-  uncategorised: number;  // count
+  uncategorised: number;  // count of uncategorised money out
   uncategorisedSpend: number;
   merchants: { key: string; spent: number; count: number }[];
 }
@@ -33,9 +33,10 @@ export function summariseMonth(txns: Txn[], settings: BudgetSettings, month: str
     const amount = myAmount(t); // your share when split
     const k = t.categoryId ? kind.get(t.categoryId) : undefined;
     if (!t.categoryId || !k) {
+      // Only salary and the income categories you choose count as income; other money in is ignored.
+      if (amount >= 0) continue;
       uncategorised++;
-      if (amount < 0) { spent += -amount; uncategorisedSpend += -amount; }
-      else income += amount;
+      spent += -amount; uncategorisedSpend += -amount;
     } else if (k === 'expense') {
       spent += -amount;
       byCategory.set(t.categoryId, (byCategory.get(t.categoryId) ?? 0) - amount);

@@ -25,8 +25,8 @@ export interface BudgetSettings {
 }
 
 export type SplitStatus = 'owed' | 'requested' | 'paid';
-export interface SplitPerson { name: string; status: SplitStatus; at?: string }
-/** Split equally between you and `people`. */
+/** `amount` fixes this person's share; without it they split the remainder equally with you. */
+export interface SplitPerson { name: string; status: SplitStatus; at?: string; amount?: number }
 export interface Split { people: SplitPerson[] }
 
 export interface Txn {

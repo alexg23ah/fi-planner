@@ -47,8 +47,11 @@ Without the env vars the app runs in local-only mode (plan stored in the browser
 2. Built-in keywords for common Australian merchants (`src/budget/defaults.ts`).
 3. AI, only for merchants not matched above, only when you click the button. One line per merchant is sent: the cleaned name (card numbers, dates, references stripped) and in/out. No amounts, dates or account names. AI answers are remembered, so each merchant is only sent once.
 
+### Income
+Only categories set to **Income** count: Salary, plus any you add (e.g. bonus, side work). Refunds, interest and other money in go to *Other money in* (not counted).
+
 ### Splits
-Type names (comma separated) in **Split with** on a transaction. It's shared equally between you and those people, only your share counts in the budget, and **Splits** shows what each person owes, with owed / requested / paid per item and a copyable request message. Money in whose description contains a split name is categorised as *Paid back by others* (a transfer, so not income).
+Type names (comma separated) in **Split with** on a transaction. It's shared equally between you and those people; add an amount after a name for a fixed share (`Emily, Oli $40` → Oli $40, the rest split equally between you and Emily). Only your share counts in the budget, and **Splits** shows what each person owes, with owed / requested / paid per item and a copyable request message. Money in whose description contains a split name is categorised as *Paid back by others* (a transfer, so not income).
 
 Imports accept CommBank, NAB, Macquarie and Easy Street CSV exports, or rows pasted from internet banking. Re-importing overlapping data skips transactions already stored.
 

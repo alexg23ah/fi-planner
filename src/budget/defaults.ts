@@ -33,9 +33,10 @@ export function defaultBudgetSettings(): BudgetSettings {
       cat('mortgage', 'Mortgage', 'expense', 0),
       cat('other', 'Other spending', 'expense', 200),
       cat('salary', 'Salary', 'income', 0),
-      cat('other-income', 'Other income', 'income', 0),
+      cat('other-income', 'Other income (bonus, side work)', 'income', 0),
       cat('transfers', 'Transfers between accounts', 'transfer'),
       cat('reimbursement', 'Paid back by others', 'transfer'),
+      cat('money-in', 'Other money in (refunds, interest)', 'transfer'),
       cat('card-repayment', 'Credit card repayment', 'transfer'),
       cat('investing', 'Savings & investing', 'transfer'),
     ],
@@ -49,7 +50,7 @@ export function defaultBudgetSettings(): BudgetSettings {
  */
 export const KEYWORD_RULES: { re: RegExp; cat: string; dir?: 'in' | 'out' }[] = [
   { re: /\b(SALARY|PAYROLL|WAGES|PAY ?RUN)\b/, cat: 'salary', dir: 'in' },
-  { re: /\b(CREDIT INTEREST|INTEREST (PAID|CREDIT|EARNED)|BONUS INTEREST|DIVIDEND|DISTRIBUTION|ATO|TAX REFUND|CASHBACK)\b/, cat: 'other-income', dir: 'in' },
+  { re: /\b(CREDIT INTEREST|INTEREST (PAID|CREDIT|EARNED)|BONUS INTEREST|DIVIDEND|DISTRIBUTION|ATO|TAX REFUND|CASHBACK|REFUND|REVERSAL)\b/, cat: 'money-in', dir: 'in' },
   { re: /\b(TRANSFER (TO|FROM)|INTERNAL TRANSFER|TFR (TO|FROM)|FUNDS TRANSFER|INTERNET TRANSFER|MOVED (TO|FROM))\b/, cat: 'transfers' },
   { re: /\b(CREDIT CARD|CC PAYMENT|CARD PAYMENT|PAYMENT (RECEIVED|THANK ?YOU)|THANK YOU PAYMENT|AMEX|AMERICAN EXPRESS)\b/, cat: 'card-repayment' },
   { re: /\b(VANGUARD|PEARLER|STAKE|SELFWEALTH|COMMSEC|SHARESIES|SPACESHIP|RAIZ|BETASHARES|SUPERHERO|CMC MARKETS|NABTRADE|INTERACTIVE BROKERS|MOOMOO)\b/, cat: 'investing' },

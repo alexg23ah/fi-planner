@@ -450,3 +450,5 @@ textarea.paste:focus { outline: none; border-color: var(--accent); box-shadow: 0
   .person .c-status { grid-area: status; margin-top: 6px; display: flex; align-items: center; gap: 8px; }
   .person .status-date { display: inline; margin: 0; }
 }
+.split-input.invalid { border-color: var(--neg); }
+.split-err { display: block; font-size: 12px; margin-top: 2px; max-width: 220px; }
