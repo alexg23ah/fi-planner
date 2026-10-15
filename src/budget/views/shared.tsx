@@ -33,6 +33,23 @@ const SOURCE_HELP: Record<CatSource, string> = {
 
 export const amountClass = (a: number) => (a < 0 ? 'amt out' : 'amt in');
 
+/** Free text that saves on blur or Enter. */
+export function NoteInput({ value, onCommit, label }: { value: string; onCommit: (v: string) => void; label: string }) {
+  const [text, setText] = useState(value);
+  const [focused, setFocused] = useState(false);
+  useEffect(() => { if (!focused) setText(value); }, [value, focused]);
+  return (
+    <input className="text note-input" aria-label={label} value={text} placeholder="Add a note" maxLength={500}
+      onFocus={() => setFocused(true)}
+      onChange={(e) => setText(e.target.value)}
+      onBlur={() => { setFocused(false); if (text.trim() !== value) onCommit(text.trim()); }}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+        if (e.key === 'Escape') { setText(value); (e.target as HTMLInputElement).blur(); }
+      }} />
+  );
+}
+
 /** Comma-separated names, optionally with a $ amount each. Saves on blur or Enter; `validate` can block the save. */
 export function SplitInput({ value, onCommit, validate, label, disabled }: {
   value: string; onCommit: (v: string) => void; validate?: (v: string) => string | null; label: string; disabled?: boolean;

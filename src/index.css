@@ -452,3 +452,9 @@ textarea.paste:focus { outline: none; border-color: var(--accent); box-shadow: 0
 }
 .split-input.invalid { border-color: var(--neg); }
 .split-err { display: block; font-size: 12px; margin-top: 2px; max-width: 220px; }
+
+/* ---------- Notes ---------- */
+.note-cell { min-width: 180px; }
+.note-input { height: 32px; font-size: 14px; min-width: 170px; }
+.note-input:not(:focus):placeholder-shown { border-style: dashed; border-color: var(--line); }
+.txn-note { display: block; font-size: 12.5px; color: var(--ink-2); white-space: normal; font-weight: 400; }

@@ -7,13 +7,13 @@ import type { AiItem } from './categorise';
 const LS_SETTINGS = 'fi-planner:budget-settings';
 const LS_TXNS = 'fi-planner:transactions';
 
-type Row = { id: string; date: string; description: string; amount: number | string; account: string; category_id: string | null; source: string | null; hash: string; split?: Split | null };
+type Row = { id: string; date: string; description: string; amount: number | string; account: string; category_id: string | null; source: string | null; hash: string; split?: Split | null; note?: string | null };
 const fromRow = (r: Row): Txn => ({
   id: r.id, date: r.date, description: r.description, amount: Number(r.amount), account: r.account ?? '',
-  categoryId: r.category_id, source: (r.source as CatSource) ?? null, hash: r.hash, split: r.split ?? null,
+  categoryId: r.category_id, source: (r.source as CatSource) ?? null, hash: r.hash, split: r.split ?? null, note: r.note ?? '',
 });
 
-const COLS = 'id,date,description,amount,account,category_id,source,hash,split';
+const COLS = 'id,date,description,amount,account,category_id,source,hash,split,note';
 const sortTxns = (t: Txn[]) => [...t].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
 
 function normaliseSettings(raw: unknown): BudgetSettings {
@@ -48,6 +48,7 @@ export interface BudgetStore {
   patchTxns: (changes: { id: string; categoryId: string | null; source: CatSource | null }[]) => Promise<void>;
   deleteTxns: (ids: string[]) => Promise<void>;
   setSplits: (changes: { id: string; split: Split | null }[]) => Promise<void>;
+  setNote: (id: string, note: string) => Promise<void>;
   askAi: (items: AiItem[]) => Promise<Map<string, string | null>>;
 }
 
@@ -69,7 +70,7 @@ export function useBudgetStore(planId: string | null): BudgetStore {
     if (!cloud) {
       try {
         setSettings(normaliseSettings(JSON.parse(localStorage.getItem(LS_SETTINGS) || 'null')));
-        setTxns(sortTxns(JSON.parse(localStorage.getItem(LS_TXNS) || '[]')));
+        setTxns(sortTxns((JSON.parse(localStorage.getItem(LS_TXNS) || '[]') as Txn[]).map((t) => ({ ...t, split: t.split ?? null, note: t.note ?? '' }))));
       } catch { /* defaults */ }
       setStatus('ready');
       return;
@@ -146,7 +147,7 @@ export function useBudgetStore(planId: string | null): BudgetStore {
     for (let i = 0; i < fresh.length; i += 500) {
       const chunk = fresh.slice(i, i + 500).map((t) => ({
         plan_id: planId, date: t.date, description: t.description, amount: t.amount, account: t.account,
-        category_id: t.categoryId, source: t.source, hash: t.hash, split: t.split,
+        category_id: t.categoryId, source: t.source, hash: t.hash, split: t.split, note: t.note,
       }));
       const { data, error: e } = await supabase!.from('transactions')
         .upsert(chunk, { onConflict: 'plan_id,hash', ignoreDuplicates: true })
@@ -204,6 +205,16 @@ export function useBudgetStore(planId: string | null): BudgetStore {
     setSaveState('saved');
   }, [cloud]);
 
+  const setNote = useCallback(async (id: string, note: string) => {
+    const next = txnsRef.current.map((t) => (t.id === id ? { ...t, note } : t));
+    setTxns(next);
+    if (!cloud) { persistLocalTxns(next); return; }
+    setSaveState('saving');
+    const { error: e } = await supabase!.from('transactions').update({ note }).eq('id', id);
+    if (e) { setError(e.message); setSaveState('error'); return; }
+    setSaveState('saved');
+  }, [cloud]);
+
   const askAi = useCallback(async (items: AiItem[]) => {
     const out = new Map<string, string | null>();
     if (!items.length) return out;
@@ -222,5 +233,5 @@ export function useBudgetStore(planId: string | null): BudgetStore {
     return out;
   }, [cloud]);
 
-  return { status, error, settings, txns, saveState, updateSettings, addTxns, patchTxns, deleteTxns, setSplits, askAi };
+  return { status, error, settings, txns, saveState, updateSettings, addTxns, patchTxns, deleteTxns, setSplits, setNote, askAi };
 }

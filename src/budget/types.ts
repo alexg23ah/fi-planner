@@ -39,6 +39,7 @@ export interface Txn {
   source: CatSource | null;
   hash: string;
   split: Split | null;
+  note: string;
 }
 
 export type NewTxn = Omit<Txn, 'id'>;

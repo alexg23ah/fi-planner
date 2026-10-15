@@ -45,7 +45,7 @@ export function Import({ store, go }: { store: BudgetStore; go: (tab: string) =>
         if (t.amount > 0 && payerRe?.test(t.description) && (!categoryId || source === 'auto')) { categoryId = 'reimbursement'; source = 'auto'; }
         if (!categoryId && aiCats.get(key)) { categoryId = aiCats.get(key)!; source = 'ai'; }
       }
-      return { ...t, account, categoryId, source, split: null, duplicate: existing.has(t.hash) };
+      return { ...t, account, categoryId, source, split: null, note: '', duplicate: existing.has(t.hash) };
     });
   }, [parsed, account, settings, aiCats, manual, existing, payerRe]);
 

@@ -4,7 +4,7 @@ import { summariseMonth } from './summary';
 import { defaultBudgetSettings } from './defaults';
 import type { Txn } from './types';
 
-const txn = (p: Partial<Txn>): Txn => ({ id: Math.random().toString(36), date: '2026-10-10', description: 'DINNER', amount: -90, account: '', categoryId: 'dining', source: 'you', hash: Math.random().toString(36), split: null, ...p });
+const txn = (p: Partial<Txn>): Txn => ({ id: Math.random().toString(36), date: '2026-10-10', description: 'DINNER', amount: -90, account: '', categoryId: 'dining', source: 'you', hash: Math.random().toString(36), split: null, note: '', ...p });
 
 describe('splits', () => {
   it('parses names', () => {
@@ -76,5 +76,12 @@ describe('income', () => {
     ], defaultBudgetSettings(), '2026-10');
     expect(s.income).toBe(5000);
     expect(s.uncategorised).toBe(1);
+  });
+});
+
+describe('notes', () => {
+  it('request message uses the note when there is one', () => {
+    const t = txn({ amount: -60, description: 'SQ *SOME BAR NEWTOWN', note: 'Friday drinks', split: buildSplit(null, ['Emily']) });
+    expect(requestMessage(owedByPerson([t])[0], (n) => `$${n.toFixed(2)}`)).toContain('Friday drinks: $30.00');
   });
 });

@@ -93,7 +93,7 @@ export function Splits({ store }: { store: BudgetStore }) {
                     {lines.map((l) => (
                       <tr key={l.txn.id} className={l.person.status === 'paid' ? 'paid' : ''}>
                         <td className="c-date">{l.txn.date}</td>
-                        <td className="desc c-desc" title={l.txn.description}>{l.txn.description}</td>
+                        <td className="desc c-desc" title={l.txn.description}>{l.txn.description}{l.txn.note && <small className="txn-note">{l.txn.note}</small>}</td>
                         <td className="r muted c-total">{money(-l.txn.amount)}</td>
                         <td className="r c-share">{money(l.share)}</td>
                         <td className="c-status">

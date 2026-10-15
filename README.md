@@ -36,7 +36,7 @@ npm test                     # model tests
 Without the env vars the app runs in local-only mode (plan stored in the browser).
 
 ## Budget app setup
-1. Supabase SQL Editor → run `supabase/migrations/002_budget.sql`, then `003_splits.sql` (after `001_plans.sql`).
+1. Supabase SQL Editor → run `supabase/migrations/002_budget.sql`, then `003_splits.sql`, then `004_notes.sql` (after `001_plans.sql`).
 2. AI categorising (optional): add **one** of these in Vercel → Environment Variables, then redeploy.
    - `GEMINI_API_KEY` — from aistudio.google.com → Get API key. Optional `GEMINI_MODEL` (default `gemini-3.5-flash-lite`).
    - or `AI_API_KEY` — any OpenAI-compatible key (Groq by default). Optional `AI_BASE_URL`, `AI_MODEL`.
@@ -52,6 +52,9 @@ Only categories set to **Income** count: Salary, plus any you add (e.g. bonus, s
 
 ### Splits
 Type names (comma separated) in **Split with** on a transaction. It's shared equally between you and those people; add an amount after a name for a fixed share (`Emily, Oli $40` → Oli $40, the rest split equally between you and Emily). Only your share counts in the budget, and **Splits** shows what each person owes, with owed / requested / paid per item and a copyable request message. Money in whose description contains a split name is categorised as *Paid back by others* (a transfer, so not income).
+
+### Notes
+Each transaction has a **Notes** field. Search matches notes as well as descriptions, notes show on the Splits tab, and a split request message uses the note instead of the bank description.
 
 Imports accept CommBank, NAB, Macquarie and Easy Street CSV exports, or rows pasted from internet banking. Re-importing overlapping data skips transactions already stored.
 

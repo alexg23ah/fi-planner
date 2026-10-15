@@ -112,7 +112,7 @@ export function knownNames(txns: Txn[]): string[] {
 export function requestMessage(s: PersonSummary, money: (n: number) => string): string {
   const open = s.lines.filter((l) => l.person.status !== 'paid');
   const total = open.reduce((a, l) => a + l.share, 0);
-  const items = open.map((l) => `- ${l.txn.date.slice(8)}/${l.txn.date.slice(5, 7)} ${tidy(l.txn.description)}: ${money(l.share)}`);
+  const items = open.map((l) => `- ${l.txn.date.slice(8)}/${l.txn.date.slice(5, 7)} ${l.txn.note ? l.txn.note : tidy(l.txn.description)}: ${money(l.share)}`);
   return `Hey ${s.name}, here's your share of a few things:\n${items.join('\n')}\nTotal ${money(total)}. Thanks!`;
 }
 

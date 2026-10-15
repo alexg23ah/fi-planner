@@ -4,7 +4,7 @@ import type { Txn } from '../types';
 import { aiItemsFor, sameMerchant, upsertRule } from '../categorise';
 import { merchantKey } from '../merchant';
 import { monthLabel, monthOf, monthsWithData } from '../summary';
-import { CategorySelect, SourceBadge, SplitInput, amountClass } from './shared';
+import { CategorySelect, NoteInput, SourceBadge, SplitInput, amountClass } from './shared';
 import { buildSplit, parseSplitInput, shares, splitText } from '../split';
 import { cents, money } from '../../lib/format';
 import { uid } from '../../model/defaults';
@@ -34,7 +34,7 @@ export function Transactions({ store, filter, setFilter }: { store: BudgetStore;
       (filter.month === 'all' || monthOf(t.date) === filter.month)
       && (filter.category === 'all' || (filter.category === 'none' ? !t.categoryId : t.categoryId === filter.category))
       && (filter.account === 'all' || t.account === filter.account)
-      && (!q || t.description.toUpperCase().includes(q)));
+      && (!q || t.description.toUpperCase().includes(q) || t.note.toUpperCase().includes(q)));
   }, [txns, filter]);
 
   const total = list.reduce((a, t) => a + t.amount, 0);
@@ -97,7 +97,7 @@ export function Transactions({ store, filter, setFilter }: { store: BudgetStore;
             {accounts.map((a) => <option key={a} value={a}>{a}</option>)}
           </select>
         )}
-        <input className="text search" type="search" placeholder="Search descriptions" aria-label="Search" value={filter.q}
+        <input className="text search" type="search" placeholder="Search descriptions and notes" aria-label="Search" value={filter.q}
           onChange={(e) => setFilter({ ...filter, q: e.target.value })} />
         {settings.aiEnabled && uncategorised.length > 0 && (
           <button type="button" className="btn" disabled={busy} onClick={aiUncategorised}>
@@ -117,7 +117,7 @@ export function Transactions({ store, filter, setFilter }: { store: BudgetStore;
           <p className="muted list-meta">{list.length} transactions, net {money(total)}</p>
           <div className="table-scroll tall">
             <table className="data txn-table">
-              <thead><tr><th className="sticky">Date</th><th>Description</th><th>Account</th><th className="r">Amount</th><th>Category</th><th>How</th><th>Split with</th><th aria-label="Delete" /></tr></thead>
+              <thead><tr><th className="sticky">Date</th><th>Description</th><th>Account</th><th className="r">Amount</th><th>Category</th><th>How</th><th>Split with</th><th>Notes</th><th aria-label="Delete" /></tr></thead>
               <tbody>
                 {list.slice(0, limit).map((t) => (
                   <tr key={t.id}>
@@ -136,6 +136,7 @@ export function Transactions({ store, filter, setFilter }: { store: BudgetStore;
                         onCommit={(v) => store.setSplits([{ id: t.id, split: buildSplit(t.split, parseSplitInput(v)) }])} />
                       {t.split && <SplitHint amount={t.amount} split={t.split} />}
                     </td>
+                    <td className="note-cell"><NoteInput label={`Note for ${t.description}`} value={t.note} onCommit={(v) => store.setNote(t.id, v)} /></td>
                     <td><button type="button" className="icon-btn" aria-label={`Delete ${t.description}`} onClick={() => {
                       if (window.confirm(`Delete this transaction?\n${t.date} ${t.description} ${money(t.amount)}`)) store.deleteTxns([t.id]);
                     }}>×</button></td>

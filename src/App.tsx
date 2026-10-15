@@ -101,7 +101,7 @@ export default function App() {
       )}
       {store.saveState === 'error' && <p className="banner err">Your last change didn't save: {store.error}. Check your connection; the next edit will retry.</p>}
       {app === 'budget' && budget.status === 'error' && (
-        <p className="banner err">Couldn't load the budget: {budget.error}. If this is a new setup, run supabase/migrations/002_budget.sql and 003_splits.sql in Supabase.</p>
+        <p className="banner err">Couldn't load the budget: {budget.error}. If this is a new setup, run supabase/migrations/002_budget.sql, 003_splits.sql and 004_notes.sql in Supabase.</p>
       )}
       <main>
         {app === 'fi' && tab === 'dashboard' && <Dashboard plan={plan} rows={rows} summary={summary} />}
