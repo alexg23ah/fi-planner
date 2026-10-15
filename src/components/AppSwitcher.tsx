@@ -25,7 +25,7 @@ export function AppSwitcher({ app, onSwitch }: { app: AppId; onSwitch: (a: AppId
   return (
     <div className="switcher" ref={ref}>
       <button type="button" className="switcher-btn" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
-        <span className="brand">Buckaroo</span>
+        <span className="brand"><img className="logo" src="/logo.svg" alt="" width="32" height="32" />Buckaroo</span>
         <span className="switcher-app">{current.name}</span>
         <svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12"><path d="M3 4.5 6 7.5 9 4.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /></svg>
       </button>

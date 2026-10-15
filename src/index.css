@@ -63,7 +63,8 @@ button, input { font: inherit; color: inherit; }
   padding: 0 24px; height: 56px;
   background: var(--surface); border-bottom: 1px solid var(--line);
 }
-.brand { font-weight: 800; font-size: 18px; letter-spacing: -0.02em; color: var(--accent); }
+.brand { font-weight: 800; font-size: 18px; letter-spacing: -0.02em; color: var(--accent); display: inline-flex; align-items: center; gap: 8px; }
+.brand .logo { image-rendering: pixelated; flex: none; }
 .topbar nav { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; flex: 1; min-width: 0; }
 .topbar nav::-webkit-scrollbar { display: none; }
 .topbar nav a {
