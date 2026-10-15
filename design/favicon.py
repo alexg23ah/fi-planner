@@ -1,24 +1,24 @@
 """16x16 tab icon: gold coin, white face, big green $, two cow spots. Nothing else."""
 from PIL import Image
-K = {'O': '#1a1426', 'G': '#f2b632', 'L': '#ffd95a', 'g': '#c27d1c', 'W': '#ffffff', 'w': '#dfe4ec',
+K = {'O': '#1a1426', 'G': '#f2b632', 'L': '#ffd95a', 'g': '#c27d1c', 'D': '#b06f17', 'W': '#ffffff', 'w': '#dfe4ec',
      'B': '#29252f', '$': '#2f9a45', 'd': '#164a2a', '.': None}
 ART = [
-    '.OOOOOOOOOOOOOO.',
-    'OLLLLLLLLLLLLLLO',
-    'OLGGGGGGGGGGGGgO',
-    'OLGWBBW$$WWWWGgO',
-    'OLGWBW$$$$$$WGgO',
-    'OLGWW$$WWWWWWGgO',
-    'OLGWW$$WWWWWWGgO',
-    'OLGWWW$$$$WWWGgO',
-    'OLGBWWWWWW$$WGgO',
-    'OLGBBWWWWW$$WGgO',
-    'OLGBW$$$$$$WWGgO',
-    'OLGWWWW$$WWWWGgO',
-    'OLGWWWWWWBBWWGgO',
-    'OLGGGGGGGGGGGGgO',
-    'OggggggggggggggO',
-    '.OOOOOOOOOOOOOO.',
+    '.DDDDDDDDDDDDDD.',
+    'DLLLLLLLLLLLLLGD',
+    'DLWWWWWWWWWWWWGD',
+    'DLWWWWW$$WWWWWGD',
+    'DLWWW$$$$$$$WWGD',
+    'DLWW$$WWWWWWWWGD',
+    'DLWW$$WWWWWWWWGD',
+    'DLWWW$$$$$$WWWGD',
+    'DLWWWWWWWW$$WWGD',
+    'DLWWWWWWWW$$WWGD',
+    'DLWW$$$$$$$WWWGD',
+    'DLWWWWW$$WWWWWGD',
+    'DLWWWWWWWWWWWWGD',
+    'DLWWWWWWWWWWWWGD',
+    'DGGGGGGGGGGGGGGD',
+    '.DDDDDDDDDDDDDD.',
 ]
 assert all(len(r) == 16 for r in ART)
 im = Image.new('RGBA', (16, 16))
